@@ -108,3 +108,50 @@ CREATE TABLE fgts_daily_balance (
     balance DOUBLE,
     PRIMARY KEY (date)
 )
+
+DROP TABLE operations;
+CREATE TABLE operations (
+ asset VARCHAR(50),
+ operation_type VARCHAR(50),
+ operation_date DATE,
+ value DOUBLE,
+ currency VARCHAR(50),
+ dolar_price DOUBLE
+)
+
+DROP TABLE financial_returns;
+CREATE TABLE financial_returns(
+    asset VARCHAR(50),
+    year  int,
+    month int,
+    month_start_value DOUBLE,
+    month_end_value DOUBLE,
+    deposit DOUBLE,
+    net_increase DOUBLE,
+    profit DOUBLE,
+    relative_return DOUBLE,
+    PRIMARY KEY (asset, year, month)
+)
+
+DROP TABLE summary_returns;
+CREATE TABLE summary_returns(
+    year  int,
+    month int,
+    month_end_value DOUBLE,
+    total_deposit DOUBLE,
+    total_profit DOUBLE,
+    total_return DOUBLE,
+    moving_avg_deposit_3 DOUBLE,
+    moving_avg_profit_3 DOUBLE,
+    moving_avg_return_3 DOUBLE,
+    moving_avg_deposit_6 DOUBLE,
+    moving_avg_profit_6 DOUBLE,
+    moving_avg_return_6 DOUBLE,
+    moving_avg_deposit_9 DOUBLE,
+    moving_avg_profit_9 DOUBLE,
+    moving_avg_return_9 DOUBLE,
+    moving_avg_deposit_12 DOUBLE,
+    moving_avg_profit_12 DOUBLE,
+    moving_avg_return_12 DOUBLE,
+    PRIMARY KEY (year, month)
+)
