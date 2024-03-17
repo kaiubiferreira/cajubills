@@ -1,0 +1,59 @@
+codigo;grupo;descricao
+R1;Receita;Salário / Adiantamento
+R2;Receita;Férias
+R3;Receita;13º salário
+R4;Receita;Vale alimentação
+R5;Receita;Receita extra (aluguel, restituição IR)
+R6;Receita;Outras Receitas
+R7;Receita;Lais
+A1;Alimentação;Supermercado
+A2;Alimentação;Feira / Sacolão
+A3;Alimentação;Padaria
+A4;Alimentação;Refeição fora de casa
+A5;Alimentação;Outros (café, água, sorvetes, etc)
+M1;Moradia;Aluguel de imóvel
+M2;Moradia;Condomínio (água, gás)
+M3;Moradia;Energia Elétrica
+M4;Moradia;Diarista
+M5;Moradia;Celular / Internet
+M6;Moradia;Decoração / Reforma
+M7;Moradia;Seguro Residencial
+E1;Educação;Cursos
+E2;Educação;Livros
+C1;Animal de Estimação;Ração
+C2;Animal de Estimação;Banho / Tosa
+C3;Animal de Estimação;Veterinário / medicamento
+C4;Animal de Estimação;Hotel
+S1;Saúde;Plano de saúde
+S2;Saúde;Medicamentos
+S3;Saúde;Dentista
+S4;Saúde;Terapia
+S5;Saúde;Academia / Tratamento Estético
+S6;Saúde;Personal
+S7;Saúde;Nutricionista
+S8;Saúde;Médicos/Exames fora do plano de saúde
+T1;Transporte;Ônibus / Metrô
+T2;Transporte;Uber
+T3;Transporte;Combustível
+T4;Transporte;Estacionamento
+T5;Transporte;Seguro Auto
+T6;Transporte;Manutenção / Lavagem / Troca de óleo
+T7;Transporte;Licenciamento
+T8;Transporte;Pedágio
+T9;Transporte;IPVA
+T10;Transporte;Multa
+P1;Pessoais;Vestuário / Calçados / Acessórios
+P2;Pessoais;Cabeleireiro / Manicure / Higiene pessoal
+P3;Pessoais;Presentes
+P4;Pessoais;Outros
+L1;Lazer;Restaurantes / Festas
+L2;Lazer;Streaming
+L3;Lazer;Viagens
+L4;Lazer;Cinema / Teatro / Shows
+F1;Serviços Financeiros;Empréstimos
+F2;Serviços Financeiros;Seguros (vida/residencial)
+F3;Serviços Financeiros;Aplicações (Poupança/ Prev.Privada/ Outros)
+F5;Serviços Financeiros;Tarifas bancárias
+F7;Serviços Financeiros;Pagamento da fatura do cartão de crédito
+F8;Serviços Financeiros;Imposto de Renda a Pagar
+F9;Serviços Financeiros;Saque

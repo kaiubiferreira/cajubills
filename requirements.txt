@@ -1,2 +1,5 @@
 yfinance==0.2.20
-mysql-connector-python=8.1.0
+mysql-connector-python==8.1.0
+pandas
+ofxparse==0.20
+toolz==0.12.1
