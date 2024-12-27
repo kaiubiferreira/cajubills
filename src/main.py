@@ -1,6 +1,6 @@
 import streamlit as st
 
-from dashboard import plot_history
+from history_dashboard import plot_history
 from style import button
 
 st.title("CajuBills")
