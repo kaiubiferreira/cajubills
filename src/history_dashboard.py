@@ -63,10 +63,91 @@ def get_summary_by_asset(start_date, end_date):
     return df
 
 
+def get_last_state():
+    query = ("SELECT asset, value, type "
+             "FROM daily_balance t1 "
+             "INNER JOIN ( "
+             "SELECT MAX(date) AS max_date "
+             "FROM daily_balance "
+             ") t2 ON t1.date = t2.max_date "
+             "ORDER BY type, value DESC;")
+    return run_query(query)
+
+
+def format_currency(amount, currency_symbol) -> str:
+    formatted_amount = f"{amount:,.2f}"
+    return f"{currency_symbol} {formatted_amount}"
+
+
+def plot_summary():
+    st.title("Current State")
+    df = get_last_state()
+
+    fixed_income_sum = df[df['type'] == 'fixed_income']['value'].sum()
+    equity_sum = df[df['type'] == 'equity']['value'].sum()
+    total_sum = fixed_income_sum + equity_sum
+
+    html = f"""
+    <style>
+        .bold {{ font-weight: bold; }}
+        .dark-green {{ background-color: #2A8E28; }}
+        .dark-blue {{ background-color: #1E4F90; }}
+        .pale-green {{ background-color: #70C76F; }}
+        .pale-blue {{ background-color: #517FBA; }}
+        .dark-yellow {{ background-color: #AEA52C; }}
+         td, th {{ padding: 8px; }}
+         .table-container {{
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }}
+    </style>
+    <div class="table-container">
+    <table class="table">
+        <tr class="bold dark-green">
+            <td>Renda Fixa</td>
+            <td>{format_currency(fixed_income_sum, 'R$')}</td>
+        </tr>
+    """
+
+    for _, row in df[df['type'] == 'fixed_income'].iterrows():
+        html += f"""
+        <tr class="pale-green">
+            <td>{row['asset']}</td>
+            <td>{format_currency(row['value'], 'R$')}</td>
+        </tr>
+        """
+
+    html += f"""
+        <tr class="bold dark-blue">
+            <td>Renda Variavel</td>
+            <td>{format_currency(equity_sum, 'R$')}</td>
+        </tr>
+    """
+
+    # Add rows for equity
+    for _, row in df[df['type'] == 'equity'].iterrows():
+        html += f"""
+        <tr class="pale-blue">
+            <td>{row['asset']}</td>
+            <td>{format_currency(row['value'], 'R$')}</td>
+        </tr>
+        """
+
+    html += f"""
+        <tr class="bold dark-yellow">
+            <td>Total</td>
+            <td>{format_currency(total_sum, 'R$')}</td>
+        </tr>
+    """
+
+    html += "</table></div>"
+
+    st.html(html)
+
+
 def plot_history():
-    print("Plotting history")
     dates = get_dates()
-    print(dates)
 
     start_date = st.sidebar.date_input('Start Date',
                                        value=(pd.to_datetime(dates['end_date'].max()) - pd.DateOffset(years=2)))
@@ -273,4 +354,5 @@ def plot_history():
     st.plotly_chart(fig_deposit_by_asset)
 
 
+plot_summary()
 plot_history()
