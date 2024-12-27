@@ -37,7 +37,7 @@ def get_dates():
     return run_query(query)
 
 
-def plot():
+def plot_history():
     print("Plotting history")
     dates = get_dates()
     print(dates)
@@ -114,4 +114,3 @@ def plot():
     st.plotly_chart(fig_asset)
 
 
-plot()
