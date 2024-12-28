@@ -64,19 +64,137 @@ def get_summary_by_asset(start_date, end_date):
 
 
 def get_last_state():
-    query = ("SELECT asset, value, type "
-             "FROM daily_balance t1 "
-             "INNER JOIN ( "
-             "SELECT MAX(date) AS max_date "
-             "FROM daily_balance "
-             ") t2 ON t1.date = t2.max_date "
-             "ORDER BY type, value DESC;")
+    query = ("""
+    SELECT 
+        asset, 
+        value, 
+        type, 
+        percentage AS expected_percentage,
+        (value / total_value) * 100 AS actual_percentage
+    FROM 
+        daily_balance t1 
+    INNER JOIN ( 
+        SELECT 
+            MAX(date) AS max_date 
+        FROM 
+            daily_balance 
+    ) t2 ON t1.date = t2.max_date 
+    LEFT JOIN target_percentage ON asset = name
+    CROSS JOIN (
+        SELECT SUM(value) AS total_value
+        FROM daily_balance
+        WHERE date = (SELECT MAX(date) FROM daily_balance)
+    ) AS total
+    ORDER BY type, value DESC;
+    """)
+    return run_query(query)
+
+
+def get_last_results():
+    query = ("""
+        SELECT total_deposit, total_profit, total_return,
+        moving_avg_deposit_12, moving_avg_profit_12, moving_avg_return_12
+        FROM summary_returns
+        ORDER BY year DESC, month DESC
+        LIMIT 1 
+    """)
+
     return run_query(query)
 
 
 def format_currency(amount, currency_symbol) -> str:
     formatted_amount = f"{amount:,.2f}"
     return f"{currency_symbol} {formatted_amount}"
+
+
+def plot_last_results():
+    st.title("Last Results")
+
+    # Get the last results from the database
+    df = get_last_results()
+
+    total_deposit = df['total_deposit'].iloc[0]
+    total_profit = df['total_profit'].iloc[0]
+    total_return = df['total_return'].iloc[0]
+    moving_avg_deposit_12 = df['moving_avg_deposit_12'].iloc[0]
+    moving_avg_profit_12 = df['moving_avg_profit_12'].iloc[0]
+    moving_avg_return_12 = df['moving_avg_return_12'].iloc[0]
+
+    # Construct the HTML for the results
+
+    html = f"""
+    <style>
+        .bold {{ font-weight: bold; }}
+        .dark-green {{ background-color: #2A8E28; }}
+        .dark-blue {{ background-color: #1E4F90; }}
+        .pale-green {{ background-color: #70C76F; }}
+        .pale-blue {{ background-color: #517FBA; }}
+        .dark-yellow {{ background-color: #a78300; }}
+        .pale-yellow {{ background-color: #FFD336; }}
+        td, th {{ padding: 8px; }}
+        .table-container {{
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }}
+        .table-thin {{
+            border-collapse: collapse;
+            width: 30%; /* Adjust the width as needed */
+        }}
+        .table th, .table td {{
+            border: 1px solid #ddd; /* Optional: add borders for better visibility */
+        }}
+    </style>
+    <div class="table-container">
+        <table class="table-thin dark-green">
+            <tr class="bold">
+                <th>Total Deposit</th>
+            </tr>
+            <tr class="pale-green">
+                <td>{format_currency(total_deposit, 'R$')}</td>
+            </tr>
+            <tr class="bold">
+                <th>Moving Avg (12 months)</th>
+            </tr>
+            <tr class="pale-green">
+                <td>{format_currency(moving_avg_deposit_12, 'R$')}</td>
+            </tr>
+        </table>
+
+        <table class="table-thin dark-blue">
+            <tr class="bold">
+                <th>Total Profit</th>
+            </tr>
+            <tr class="pale-blue">
+                <td>{format_currency(total_profit, 'R$')}</td>
+            </tr>
+            <tr class="bold">
+                <th>Moving Avg (12 months)</th>
+            </tr>
+            <tr class="pale-blue">
+                <td>{format_currency(moving_avg_profit_12, 'R$')}</td>
+            </tr>
+        </table>
+
+        <table class="table-thin dark-yellow">
+            <tr class="bold">
+                <th>Total Return</th>
+            </tr>
+            <tr class="pale-yellow">
+                <td>{total_return:,.2f} %</td>
+            </tr>
+            <tr class="bold">
+                <th>Moving Avg (12 months)</th>
+            </tr>
+            <tr class="pale-yellow">
+                <td>{moving_avg_return_12:,.2f} %</td>
+            </tr>
+        </table>
+    </div>
+    """
+
+    # Render the HTML in the Streamlit app
+    st.html(html)
 
 
 def plot_summary():
@@ -94,7 +212,7 @@ def plot_summary():
         .dark-blue {{ background-color: #1E4F90; }}
         .pale-green {{ background-color: #70C76F; }}
         .pale-blue {{ background-color: #517FBA; }}
-        .dark-yellow {{ background-color: #AEA52C; }}
+        .dark-yellow {{ background-color: #a78300; }}
          td, th {{ padding: 8px; }}
          .table-container {{
             display: flex;
@@ -145,8 +263,11 @@ def plot_summary():
 
     st.html(html)
 
+    plot_last_results()
+
 
 def plot_history():
+    st.divider()
     dates = get_dates()
 
     start_date = st.sidebar.date_input('Start Date',
@@ -325,24 +446,20 @@ def plot_history():
         go.Bar(x=monthly_returns['year_month'], y=monthly_returns['total_deposit'], name='Total Deposit',
                marker_color='skyblue'))
 
-    # Add line trace for moving average - 6 months
     fig_deposits.add_trace(go.Scatter(x=monthly_returns['year_month'], y=monthly_returns['moving_avg_deposit_6'],
                                       name='6-Month Moving Average', mode='lines+markers',
                                       line=dict(color='yellow', width=2)))
 
-    # Add line trace for moving average - 12 months
     fig_deposits.add_trace(go.Scatter(x=monthly_returns['year_month'], y=monthly_returns['moving_avg_deposit_12'],
                                       name='12-Month Moving Average', mode='lines+markers',
                                       line=dict(color='green', width=2)))
 
-    # Customize layout
     fig_deposits.update_layout(title='Total Deposits',
                                xaxis_title='Year-Month',
                                yaxis_title='Amount',
                                xaxis=dict(tickformat='%Y-%m'),
                                legend=dict(x=0.1, y=1))
 
-    # Show the plot in Streamlit
     st.plotly_chart(fig_deposits)
 
     fig_deposit_by_asset = px.bar(summary_by_asset,
