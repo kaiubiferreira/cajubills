@@ -3,6 +3,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from contants import EQUITY_TARGET, FIXED_INCOME_TARGET
 from sql.connection import run_query
 
 
@@ -65,27 +66,47 @@ def get_summary_by_asset(start_date, end_date):
 
 def get_last_state():
     query = ("""
-    SELECT 
-        asset, 
-        value, 
-        type, 
-        percentage AS expected_percentage,
-        (value / total_value) * 100 AS actual_percentage
-    FROM 
-        daily_balance t1 
-    INNER JOIN ( 
+    WITH DATA
+    AS(
         SELECT 
-            MAX(date) AS max_date 
+            asset, 
+            value, 
+            type, 
+            percentage AS expected_percentage,
+            (value / total_value) * 100 AS actual_percentage,
+            CASE WHEN percentage > 0 THEN percentage - (value / total_value) * 100 ELSE 0 END AS diff,
+            (percentage * total_value / 100.0) - value AS absolute_diff
+        FROM daily_balance t1 
+        INNER JOIN ( 
+        SELECT 
+             MAX(date) AS max_date 
         FROM 
-            daily_balance 
-    ) t2 ON t1.date = t2.max_date 
-    LEFT JOIN target_percentage ON asset = name
-    CROSS JOIN (
-        SELECT SUM(value) AS total_value
-        FROM daily_balance
-        WHERE date = (SELECT MAX(date) FROM daily_balance)
-    ) AS total
-    ORDER BY type, value DESC;
+             daily_balance 
+        ) t2 ON t1.date = t2.max_date 
+        LEFT JOIN target_percentage ON asset = name
+        CROSS JOIN (
+            SELECT SUM(value) AS total_value
+            FROM daily_balance
+            WHERE date = (SELECT MAX(date) FROM daily_balance)
+        ) AS total
+    ),
+    POSITIVE_DIFF_TOTAL AS(
+        SELECT sum(absolute_diff) as positive_diff
+        FROM DATA
+        WHERE absolute_diff > 0
+    )
+    SELECT
+        asset,
+        value,
+        type,
+        expected_percentage,
+        actual_percentage,
+        diff,
+        absolute_diff,
+        CASE WHEN absolute_diff > 0 THEN absolute_diff / positive_diff ELSE 0 END AS diff_ratio
+    FROM DATA
+    CROSS JOIN POSITIVE_DIFF_TOTAL
+    ORDER BY type, value DESC
     """)
     return run_query(query)
 
@@ -98,7 +119,6 @@ def get_last_results():
         ORDER BY year DESC, month DESC
         LIMIT 1 
     """)
-
     return run_query(query)
 
 
@@ -132,7 +152,7 @@ def plot_last_results():
         .dark-yellow {{ background-color: #a78300; }}
         .pale-yellow {{ background-color: #FFD336; }}
         td, th {{ padding: 8px; }}
-        .table-container {{
+        .table-container-thin {{
             display: flex;
             justify-content: space-around;
             margin: 20px 0;
@@ -141,11 +161,8 @@ def plot_last_results():
             border-collapse: collapse;
             width: 30%; /* Adjust the width as needed */
         }}
-        .table th, .table td {{
-            border: 1px solid #ddd; /* Optional: add borders for better visibility */
-        }}
     </style>
-    <div class="table-container">
+    <div class="table-container-thin">
         <table class="table-thin dark-green">
             <tr class="bold">
                 <th>Total Deposit</th>
@@ -199,11 +216,23 @@ def plot_last_results():
 
 def plot_summary():
     st.title("Current State")
+    aporte_input = st.text_input("Aporte: ")
+    aporte = 0
+    if aporte_input:
+        aporte = float(aporte_input)
     df = get_last_state()
+    fixed_income_target = FIXED_INCOME_TARGET
+    equity_target = EQUITY_TARGET
 
     fixed_income_sum = df[df['type'] == 'fixed_income']['value'].sum()
     equity_sum = df[df['type'] == 'equity']['value'].sum()
     total_sum = fixed_income_sum + equity_sum
+    fixed_income_percentage = 100 * fixed_income_sum / total_sum
+    equity_percentage = 100 * equity_sum / total_sum
+    fixed_income_diff = fixed_income_percentage - fixed_income_target
+    equity_diff = equity_percentage - equity_target
+    fixed_income_diff_color = 'red' if abs(fixed_income_diff) > 1.0 else 'white'
+    equity_diff_color = 'red' if abs(equity_diff) > 1.0 else 'white'
 
     html = f"""
     <style>
@@ -222,17 +251,34 @@ def plot_summary():
     </style>
     <div class="table-container">
     <table class="table">
+        <tr class="bold dark-yellow">
+            <td>Asset</td>
+            <td>Value</td>
+            <td>Target %</td>
+            <td>Actual %</td>
+            <td>Diff $</td>
+            <td>Next: </td>
+        </tr>
         <tr class="bold dark-green">
             <td>Renda Fixa</td>
             <td>{format_currency(fixed_income_sum, 'R$')}</td>
+            <td>{fixed_income_target} %</td>
+            <td style="color: {fixed_income_diff_color};">{100 * fixed_income_sum / total_sum:.1f} %</td>
+            <td style="color: {fixed_income_diff_color};">{format_currency(fixed_income_diff / 100 * fixed_income_sum, 'R$')}</td>
+            <td></td>
         </tr>
     """
 
     for _, row in df[df['type'] == 'fixed_income'].iterrows():
+        diff_color = 'red' if abs(row['diff']) > 1.0 else 'white'
         html += f"""
         <tr class="pale-green">
             <td>{row['asset']}</td>
             <td>{format_currency(row['value'], 'R$')}</td>
+            <td>{row['expected_percentage']:.1f} %</td>
+            <td style="color: {diff_color};">{row['actual_percentage']:.1f} %</td>
+            <td style="color: {diff_color};">{format_currency(row['absolute_diff'], 'R$')}</td>
+            <td class="bold">{format_currency(row['diff_ratio'] * aporte, 'R$')}</td>
         </tr>
         """
 
@@ -240,22 +286,31 @@ def plot_summary():
         <tr class="bold dark-blue">
             <td>Renda Variavel</td>
             <td>{format_currency(equity_sum, 'R$')}</td>
+            <td>{equity_target} %</td>
+            <td style="color: {equity_diff_color};">{100 * equity_sum / total_sum:.1f} %</td>
+            <td style="color: {equity_diff_color};">{format_currency(equity_diff / 100 * equity_sum, 'R$')}</td>
+            <td></td>
         </tr>
     """
 
     # Add rows for equity
     for _, row in df[df['type'] == 'equity'].iterrows():
+        diff_color = 'red' if abs(row['diff']) > 1.0 else 'white'
         html += f"""
         <tr class="pale-blue">
             <td>{row['asset']}</td>
             <td>{format_currency(row['value'], 'R$')}</td>
+            <td>{row['expected_percentage']:.1f} %</td>
+            <td style="color: {diff_color};">{row['actual_percentage']:.1f} %</td>
+            <td style="color: {diff_color};">{format_currency(row['absolute_diff'], 'R$')}</td>
+            <td class="bold">{format_currency(row['diff_ratio'] * aporte, 'R$')}</td>
         </tr>
         """
 
     html += f"""
         <tr class="bold dark-yellow">
             <td>Total</td>
-            <td>{format_currency(total_sum, 'R$')}</td>
+            <td colspan="5" style="text-align: center;">{format_currency(total_sum, 'R$')}</td>
         </tr>
     """
 
