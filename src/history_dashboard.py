@@ -213,6 +213,13 @@ def plot_last_results():
     # Render the HTML in the Streamlit app
     st.html(html)
 
+    st.title("Projection")
+    col1, col2 = st.columns(2)
+    with col1:
+        deposit = st.text_input("Monthly Deposit (R$): ")
+    with col2:
+        expected_return = st.text_input("Expected Return (~0.75% to 1.0%): ")
+
 
 def plot_summary():
     st.title("Current State")
@@ -317,8 +324,7 @@ def plot_summary():
     html += "</table></div>"
 
     st.html(html)
-
-    plot_last_results()
+    st.divider()
 
 
 def plot_history():
@@ -527,4 +533,5 @@ def plot_history():
 
 
 plot_summary()
+plot_last_results()
 plot_history()
