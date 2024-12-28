@@ -1,9 +1,11 @@
+from datetime import datetime, timedelta
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from contants import EQUITY_TARGET, FIXED_INCOME_TARGET
+from contants import EQUITY_TARGET, FIXED_INCOME_TARGET, BIRTH_DATE
 from sql.connection import run_query
 
 
@@ -213,12 +215,130 @@ def plot_last_results():
     # Render the HTML in the Streamlit app
     st.html(html)
 
+
+def plot_forecast(current_balance):
     st.title("Projection")
     col1, col2 = st.columns(2)
     with col1:
-        deposit = st.text_input("Monthly Deposit (R$): ")
+        deposit = float(st.text_input("Monthly Deposit (R$): ", value=10000))
     with col2:
-        expected_return = st.text_input("Expected Return (~0.75% to 1.0%): ")
+        monthly_return_rate = float(st.text_input("Expected Return (~0.75% to 1.0%): ", value=0.8)) / 100
+
+    # Create date range for the next 20 years
+    current_date = datetime.now()
+    date_list = [current_date + timedelta(days=30 * i) for i in range(50 * 12)]
+
+    # Initialize balance list
+    balance_list = []
+
+    # Calculate balance for each month
+    for i, date in enumerate(date_list):
+        if i == 0:
+            balance = current_balance
+        else:
+            balance = balance_list[i - 1] * (1 + monthly_return_rate) + deposit
+        balance_list.append(balance)
+
+    # Create DataFrame
+    df = pd.DataFrame(data={'Date': date_list, 'Balance': balance_list})
+    december_balances = df[df['Date'].dt.month == 12]['Balance'].to_numpy()
+
+    # Create a date range for the next 10 years
+    next_10_years = datetime.now() + timedelta(days=10 * 365)  # Approximation for 10 years
+
+    # Filter the DataFrame to include only dates within the next 10 years
+    df_filtered = df[df['Date'] <= next_10_years]
+
+    # Create the figure with the filtered data
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df_filtered['Date'], y=df_filtered['Balance'], mode='lines', name='Balance'))
+    fig.update_layout(title='Projected Balance Over Time (Next 10 Years)',
+                      xaxis_title='Date',
+                      yaxis_title='Balance')
+
+    st.plotly_chart(fig)
+
+    targets = [100000, 500000, 1000000, 5000000, 10000000]
+    next_modules = [((current_balance // target) + 1) * target for target in targets]
+
+    html_table = """<table>
+        <tr>
+            <th class="bold dark-blue">Amount</th>
+            <th class="bold dark-blue">Time</th>
+            <th class="bold dark-blue">Date</th>
+            <th class="bold dark-blue">Age</th>
+            <th class="bold dark-blue">Monthly Return</th>
+        </tr>
+    """
+
+    for target in next_modules:
+        target_month = df[df['Balance'] >= target].iloc[0]
+        target_month_str = target_month['Date'].strftime('%B, %Y')
+        total_months_to_reach = (target_month['Date'] - current_date).days // 30
+        projected_return = target_month['Balance'] * monthly_return_rate
+        years_to_reach = total_months_to_reach // 12
+        months_remaining = total_months_to_reach % 12
+        age_years = (target_month['Date'] - BIRTH_DATE).days // 365
+
+        if total_months_to_reach > 12:
+            time_to_reach = f"{years_to_reach} year(s) and {months_remaining} month(s)"
+        else:
+            time_to_reach = f"{total_months_to_reach} months"
+
+        html_table += f"""
+        <tr>
+            <td class="pale-blue">{format_currency(target, "R$")}</td>
+            <td class="pale-blue">{time_to_reach}</td>
+            <td class="pale-blue">{target_month_str}</td>
+            <td class="pale-blue">{age_years} years</td>
+            <td class="pale-blue">{format_currency(projected_return, "R$")}</td>
+        </tr>
+        """
+
+    html_table += "</table>"
+
+    # Create a year-end projections table
+    year_end_table_html = """
+    <div style='display: flex; justify-content: center;'>
+        <table style='border-collapse: collapse;'>
+            <tr>
+                <th class="bold dark-green" style='border: 1px solid black; padding: 8px;'>Year</th>
+                <th class="bold dark-green" style='border: 1px solid black; padding: 8px;'>Age</th>
+                <th class="bold dark-green" style='border: 1px solid black; padding: 8px;'>Balance</th>
+            </tr>
+    """
+
+    # Get current year
+    current_year = current_date.year
+
+    # Calculate expected year-end balances for the current year and the next 3 years
+    for year in range(current_year, current_year + 5):
+        year_end_date = datetime(year, 12, 31)
+        months_remaining = (year_end_date - current_date).days // 30
+        age_years = (year_end_date - BIRTH_DATE).days // 365
+
+        if months_remaining < 0:
+            # If the year-end date has already passed, use the last calculated balance
+            expected_balance = balance_list[-1]
+        else:
+            # Calculate the balance at year-end using the suitable index
+            expected_balance = balance_list[min(months_remaining + (year - current_year) * 12, len(balance_list) - 1)]
+
+        year_end_table_html += f"""
+        <tr>
+            <td class="pale-green" style='border: 1px solid black; padding: 8px;'>{year}</td>
+            <td class="pale-green" style='border: 1px solid black; padding: 8px;'>{age_years}</td>
+            <td class="pale-green" style='border: 1px solid black; padding: 8px;'>{format_currency(expected_balance, "R$")}</td>
+        </tr>
+        """
+
+    year_end_table_html += "</table></div>"
+
+    st.subheader("Next Years: ")
+    st.html(year_end_table_html)
+
+    st.subheader(f"Milestones: ")
+    st.html(html_table)
 
 
 def plot_summary():
@@ -325,6 +445,9 @@ def plot_summary():
 
     st.html(html)
     st.divider()
+
+    plot_last_results()
+    plot_forecast(total_sum)
 
 
 def plot_history():
@@ -533,5 +656,4 @@ def plot_history():
 
 
 plot_summary()
-plot_last_results()
 plot_history()
