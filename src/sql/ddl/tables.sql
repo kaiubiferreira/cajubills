@@ -155,3 +155,10 @@ CREATE TABLE summary_returns(
     moving_avg_return_12 DOUBLE,
     PRIMARY KEY (year, month)
 )
+
+DROP TABLE target_percentage;
+CREATE TABLE target_percentage(
+    name VARCHAR(50),
+    percentage DOUBLE,
+    PRIMARY KEY (name)
+)

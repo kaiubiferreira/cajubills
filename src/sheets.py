@@ -99,3 +99,14 @@ def get_ipca():
          str(d['ipca'])) for d in data]
 
     return data_tuple
+
+
+def get_target():
+    sheet = get_sheet(TARGET_SHEET)
+    data = sheet.get_all_records()
+
+    data_tuple = [
+        (d['name'],
+         str(d['percentage'])) for d in data]
+
+    return data_tuple
