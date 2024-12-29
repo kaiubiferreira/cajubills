@@ -322,7 +322,7 @@ def plot_forecast(current_balance):
             expected_balance = balance_list[-1]
         else:
             # Calculate the balance at year-end using the suitable index
-            expected_balance = balance_list[min(months_remaining + (year - current_year) * 12, len(balance_list) - 1)]
+            expected_balance = balance_list[min(months_remaining + (year - current_year - 1) * 12, len(balance_list) - 1)]
 
         year_end_table_html += f"""
         <tr>
