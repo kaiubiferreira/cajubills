@@ -8,18 +8,20 @@ CATEGORIZATION_RULES = [
     (['transferência enviada', 'kaiubi', 'xp invest'], ('Investimentos', 'Geral')),
     (['transferência enviada', 'kaiubi', 'easynvest'], ('Investimentos', 'Geral')),
     (['transferência enviada', 'kaiubi', 'banco c6'], ('Investimentos', 'Geral')),
-    (['transferência enviada', 'kaiubi', 'caixa economica', 'cef'], ('Investimentos', 'Geral')),
+    (['transferência enviada', 'kaiubi', 'caixa economica'], ('Moradia', 'Aluguel/Prestação')),
 
     # Kaiubi Transfers RECEIVED from specific Investment Institutions
     (['transferência recebida', 'kaiubi', 'xp invest'], ('Investimentos', 'Geral')),
-    (['transferência recebida', 'kaiubi', 'Banco XP S.A'], ('Investimentos', 'Geral')),
+    (['transferência', 'kaiubi', 'Banco XP'], ('Investimentos', 'Geral')),
     (['transferência recebida', 'kaiubi', 'easynvest'], ('Investimentos', 'Geral')),
-
     (['transferência recebida', 'kaiubi', 'unibanco'], ('Renda', 'Salário')),
+    (['transferência recebida', 'lais'], ('Renda', 'Lais')),
 
 
     # Specific Account Transfers (New)
     (['iti *kaiubi ferrei'], ('Transferência entre Contas', 'Geral')),
+    (['maria josé'], ('Moradia', 'Diarista')),
+    (['maria jose'], ('Moradia', 'Diarista')),
 
     # Other specific Investment institutions / transactions (New and Existing)
     (['banco topazio'], ('Investimentos', 'Geral')),
@@ -50,14 +52,16 @@ CATEGORIZATION_RULES = [
     (['transferencia doc'], ('Financeiro', 'Transferência Bancária')),
     (['ted'], ('Financeiro', 'Transferência Bancária')),
     (['transferencia ted'], ('Financeiro', 'Transferência Bancária')),
+    (['desconto antecipação'], ('Financeiro', 'Cashback/Recompensas')),
+    (['deposito', 'boleto'], ('Financeiro', 'Transferência Bancária')),
 
     # Specific Payees & Unique Transactions (New and Existing)
     (['tamires rodrigues de sousa'], ('Extraordinários', 'Casa')),
     (['tamires rodrigues de souza'], ('Extraordinários', 'Casa')),
-    (['quality imoveis sp'], ('Moradia', 'Aluguel')),
+    (['quality imoveis sp'], ('Moradia', 'Aluguel/Prestação')),
     (['quality house sacoma', ('Moradia', 'Condomínio')]),
     (['condominio vita ipiranga', ('Moradia', 'Condomínio')]),
-    (['grpqa ltda', 'boleto'], ('Moradia', 'Aluguel')),
+    (['grpqa ltda', 'boleto'], ('Moradia', 'Aluguel/Prestação')),
     (['transferência recebida', 'pix', 'srf', 'irpf', '00.394.460/0058-87'], ('Financeiro', 'Restituição de Imposto')),
     (['secr. da receita federal'], ('Financeiro', 'Restituição de Imposto')),
     (['receita federal'], ('Financeiro', 'Restituição de Imposto')),
@@ -73,11 +77,9 @@ CATEGORIZATION_RULES = [
     (['glenda carolina'], ('Extraordinários', 'Casamento')),
     (['solucoees em consultoria integradas'], ('Extraordinários', 'Casamento')),
     (['julio vieira'], ('Educação', 'Cursos')),
-    (['sonho lar'], ('Moradia', 'Aluguel')),
-    (['maria josé'], ('Moradia', 'Diarista')),
-    (['maria jose'], ('Moradia', 'Diarista')),
-    (['quintoandar'], ('Moradia', 'Aluguel')),
-    (['quinto andar'], ('Moradia', 'Aluguel')),
+    (['sonho lar'], ('Moradia', 'Aluguel/Prestação')),
+    (['quintoandar'], ('Moradia', 'Aluguel/Prestação')),
+    (['quinto andar'], ('Moradia', 'Aluguel/Prestação')),
     (['amppy'], ('Moradia', 'Diarista')),
     (['dsobral'], ('Moradia', 'Reforma/Manutenção')),
     (['daniel valeriano sobral'], ('Moradia', 'Reforma/Manutenção')),
@@ -416,11 +418,11 @@ CATEGORIZATION_RULES = [
 
 
     # Transport
-    (['localiza'], ('Transporte', 'Aluguel de Carro')),
-    (['movida'], ('Transporte', 'Aluguel de Carro')),
-    (['unidas', 'aluguel de carros'], ('Transporte', 'Aluguel de Carro')),
-    (['rentalcars'], ('Transporte', 'Aluguel de Carro')),
-    (['aluguel de carros'], ('Transporte', 'Aluguel de Carro')),
+    (['localiza'], ('Transporte', 'Aluguel/Prestação de Carro')),
+    (['movida'], ('Transporte', 'Aluguel/Prestação de Carro')),
+    (['unidas', 'Aluguel/Prestação de carros'], ('Transporte', 'Aluguel/Prestação de Carro')),
+    (['rentalcars'], ('Transporte', 'Aluguel/Prestação de Carro')),
+    (['Aluguel/Prestação de carros'], ('Transporte', 'Aluguel/Prestação de Carro')),
     (['uber'], ('Transporte', 'Aplicativo')),
     (['99app'], ('Transporte', 'Aplicativo')),
     (['99 taxi'], ('Transporte', 'Aplicativo')),
