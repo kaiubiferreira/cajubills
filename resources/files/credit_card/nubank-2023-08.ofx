@@ -1,0 +1,493 @@
+OFXHEADER:100
+DATA:OFXSGML
+VERSION:102
+SECURITY:NONE
+ENCODING:USASCII
+CHARSET:1252
+COMPRESSION:NONE
+OLDFILEUID:NONE
+NEWFILEUID:NONE
+
+<OFX>
+ <SIGNONMSGSRSV1>
+  <SONRS>
+   <STATUS>
+    <CODE>0</CODE>
+    <SEVERITY>INFO</SEVERITY>
+   </STATUS>
+   <DTSERVER>20230806000000[-3:GMT]</DTSERVER>
+   <LANGUAGE>POR</LANGUAGE>
+   <FI>
+    <ORG>Nubank</ORG>
+    <FID>1001</FID>
+   </FI>
+  </SONRS>
+ </SIGNONMSGSRSV1>
+ <CREDITCARDMSGSRSV1>
+  <CCSTMTTRNRS>
+   <TRNUID>0</TRNUID>
+   <CCSTMTRS>
+    <CURDEF>BRL</CURDEF>[8]
+    <CCACCTFROM>
+     <ACCTID>20230806-GENERATED-ID</ACCTID> // Placeholder ID
+    </CCACCTFROM>
+    <BANKTRANLIST>
+     <DTSTART>20230629000000[-3:GMT]</DTSTART>[22, Derived from 27]
+     <DTEND>20230730000000[-3:GMT]</DTEND>[22, Derived from 27]
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230629000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-254.02</TRNAMT>[1]
+      <FITID>TXN-1</FITID> // Fabricated ID
+      <NAME>Mercadolivre*Mercadol</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>CREDIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230629000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>5705.47</TRNAMT>[1]
+      <FITID>TXN-2</FITID> // Fabricated ID
+      <NAME>Pagamento em 29 JUN</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230701000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-69.22</TRNAMT>[1]
+      <FITID>TXN-3</FITID> // Fabricated ID
+      <NAME>Supermercados Joanin</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>CREDIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230701000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>453.11</TRNAMT>[1]
+      <FITID>TXN-4</FITID> // Fabricated ID
+      <NAME>Pagamento em 01 JUL</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230701000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-29.97</TRNAMT>[1]
+      <FITID>TXN-5</FITID> // Fabricated ID
+      <NAME>Uber *Uber *Trip</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230702000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-21.94</TRNAMT>[1]
+      <FITID>TXN-6</FITID> // Fabricated ID
+      <NAME>Uber *Uber *Trip</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230702000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-99.90</TRNAMT>[1]
+      <FITID>TXN-7</FITID> // Fabricated ID
+      <NAME>Petlove Saude</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230702000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-178.16</TRNAMT>[1]
+      <FITID>TXN-8</FITID> // Fabricated ID
+      <NAME>Enelsp</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230702000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-39.90</TRNAMT>[1]
+      <FITID>TXN-9</FITID> // Fabricated ID
+      <NAME>Netflix.Com</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230702000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-19.90</TRNAMT>[1]
+      <FITID>TXN-10</FITID> // Fabricated ID
+      <NAME>Dm*Spotify</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230702000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-182.80</TRNAMT>[1]
+      <FITID>TXN-11</FITID> // Fabricated ID
+      <NAME>Quinkas Bar</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230702000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-1050.20</TRNAMT>[1]
+      <FITID>TXN-12</FITID> // Fabricated ID
+      <NAME>Tkt360*Gtvk</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230703000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-38.30</TRNAMT>[1]
+      <FITID>TXN-13</FITID> // Fabricated ID
+      <NAME>Pag*Villapadaria</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230703000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-320.00</TRNAMT>[1]
+      <FITID>TXN-14</FITID> // Fabricated ID
+      <NAME>Conta Vivo</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230703000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-48.10</TRNAMT>[1]
+      <FITID>TXN-15</FITID> // Fabricated ID
+      <NAME>Nubank Celular Seguro</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230703000000[-3:GMT]</DTPOSTED>[22, Derived from 27]
+      <TRNAMT>-42.91</TRNAMT>[1]
+      <FITID>TXN-16</FITID> // Fabricated ID
+      <NAME>Mercadolivre*Natueu</NAME>[1]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230703000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-36.16</TRNAMT>[2]
+      <FITID>TXN-17</FITID> // Fabricated ID
+      <NAME>Paraiso da Frutas</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230704000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-25.00</TRNAMT>[2]
+      <FITID>TXN-18</FITID> // Fabricated ID
+      <NAME>R.C Carbonell</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230705000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-49.90</TRNAMT>[2]
+      <FITID>TXN-19</FITID> // Fabricated ID
+      <NAME>Gympass Gympassbr</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230705000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-25.67</TRNAMT>[2]
+      <FITID>TXN-20</FITID> // Fabricated ID
+      <NAME>Pag*Degustaeventos</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230708000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-511.48</TRNAMT>[2]
+      <FITID>TXN-21</FITID> // Fabricated ID
+      <NAME>Carrefour Spa</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230709000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-31.95</TRNAMT>[2]
+      <FITID>TXN-22</FITID> // Fabricated ID
+      <NAME>Uber *Uber *Trip</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230710000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-4.09</TRNAMT>[2] // IOF is a debit
+      <FITID>TXN-23</FITID> // Fabricated ID
+      <NAME>IOF de "Bned*Bartleby Learn"</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230710000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-76.08</TRNAMT>[2]
+      <FITID>TXN-24</FITID> // Fabricated ID
+      <NAME>Bned*Bartleby Learn</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230710000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-9.99</TRNAMT>[2]
+      <FITID>TXN-25</FITID> // Fabricated ID
+      <NAME>Paraiso das Frutas Com</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230710000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-29.99</TRNAMT>[2]
+      <FITID>TXN-26</FITID> // Fabricated ID
+      <NAME>Paraiso das Frutas Com</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230710000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-9.98</TRNAMT>[2]
+      <FITID>TXN-27</FITID> // Fabricated ID
+      <NAME>Paraiso das Frutas</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230710000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-37.40</TRNAMT>[2]
+      <FITID>TXN-28</FITID> // Fabricated ID
+      <NAME>Pag*Degustaeventos</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230711000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-60.59</TRNAMT>[2]
+      <FITID>TXN-29</FITID> // Fabricated ID
+      <NAME>Santo Dica</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230711000000[-3:GMT]</DTPOSTED>[23, Derived from 27]
+      <TRNAMT>-5.00</TRNAMT>[2]
+      <FITID>TXN-30</FITID> // Fabricated ID
+      <NAME>Estapar Mono Nubank</NAME>[2]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230712000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-5.00</TRNAMT>[3]
+      <FITID>TXN-31</FITID> // Fabricated ID
+      <NAME>Estapar Mono Nubank</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230712000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-37.29</TRNAMT>[3]
+      <FITID>TXN-32</FITID> // Fabricated ID
+      <NAME>Cappta *Fornada Paes</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230712000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-42.00</TRNAMT>[3]
+      <FITID>TXN-33</FITID> // Fabricated ID
+      <NAME>Pag*Pasteldochefjr</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230714000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-16.50</TRNAMT>[3]
+      <FITID>TXN-34</FITID> // Fabricated ID
+      <NAME>Paraiso das Frutas</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230715000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-22.94</TRNAMT>[3]
+      <FITID>TXN-35</FITID> // Fabricated ID
+      <NAME>Supermercados Joanin</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230715000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-122.18</TRNAMT>[3]
+      <FITID>TXN-36</FITID> // Fabricated ID
+      <NAME>Arturito</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230715000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-5.00</TRNAMT>[3]
+      <FITID>TXN-37</FITID> // Fabricated ID
+      <NAME>Estapar Mono Nubank</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230716000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-44.93</TRNAMT>[3]
+      <FITID>TXN-38</FITID> // Fabricated ID
+      <NAME>Uber *Uber *Trip</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230716000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-179.34</TRNAMT>[3]
+      <FITID>TXN-39</FITID> // Fabricated ID
+      <NAME>Dica Distribuidora e I</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230717000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-7.00</TRNAMT>[3]
+      <FITID>TXN-40</FITID> // Fabricated ID
+      <NAME>Multiplan Administrado</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230717000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-238.70</TRNAMT>[3]
+      <FITID>TXN-41</FITID> // Fabricated ID
+      <NAME>Mm Sao Caetano</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230717000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-757.00</TRNAMT>[3]
+      <FITID>TXN-42</FITID> // Fabricated ID
+      <NAME>Quiosque Renatos</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230717000000[-3:GMT]</DTPOSTED>[24, Derived from 27]
+      <TRNAMT>-32.93</TRNAMT>[3]
+      <FITID>TXN-43</FITID> // Fabricated ID
+      <NAME>Uber *Uber *Trip</NAME>[3]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230717000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-36.89</TRNAMT>[4]
+      <FITID>TXN-44</FITID> // Fabricated ID
+      <NAME>Mercadolivre*Suzanacu</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230717000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-41.80</TRNAMT>[4]
+      <FITID>TXN-45</FITID> // Fabricated ID
+      <NAME>Uber *Uber *Trip</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230718000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-7.90</TRNAMT>[4]
+      <FITID>TXN-46</FITID> // Fabricated ID
+      <NAME>Pag*Xsollagames</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230718000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-14.90</TRNAMT>[4]
+      <FITID>TXN-47</FITID> // Fabricated ID
+      <NAME>Amazonprimebr</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230719000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-43.08</TRNAMT>[4]
+      <FITID>TXN-48</FITID> // Fabricated ID
+      <NAME>Mercadolivre*Multimer</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230719000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-38.90</TRNAMT>[4]
+      <FITID>TXN-49</FITID> // Fabricated ID
+      <NAME>Pag*Clinica</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230719000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-55.00</TRNAMT>[4]
+      <FITID>TXN-50</FITID> // Fabricated ID
+      <NAME>Pag*Clinica</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230721000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-209.70</TRNAMT>[4]
+      <FITID>TXN-51</FITID> // Fabricated ID
+      <NAME>Mercadolivre*Zerbinid</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230722000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-49.90</TRNAMT>[4]
+      <FITID>TXN-52</FITID> // Fabricated ID
+      <NAME>Gympass Gympassbr</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230723000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-19.00</TRNAMT>[4]
+      <FITID>TXN-53</FITID> // Fabricated ID
+      <NAME>Sao Bernardo Plaza Sho</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230723000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-90.50</TRNAMT>[4]
+      <FITID>TXN-54</FITID> // Fabricated ID
+      <NAME>Ponto Sb Plaza</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230724000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-117.40</TRNAMT>[4]
+      <FITID>TXN-55</FITID> // Fabricated ID
+      <NAME>Cinemark Brasil</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230724000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-189.90</TRNAMT>[4]
+      <FITID>TXN-56</FITID> // Fabricated ID
+      <NAME>Mercadolivre*123compr</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230724000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-30.71</TRNAMT>[4]
+      <FITID>TXN-57</FITID> // Fabricated ID
+      <NAME>Mercadolivre*Mercadol</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230724000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-176.00</TRNAMT>[4]
+      <FITID>TXN-58</FITID> // Fabricated ID
+      <NAME>Pecorinon Golden Sbc R</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230724000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-39.90</TRNAMT>[4]
+      <FITID>TXN-59</FITID> // Fabricated ID
+      <NAME>Riachuelo</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230725000000[-3:GMT]</DTPOSTED>[25, Derived from 27]
+      <TRNAMT>-45.29</TRNAMT>[4]
+      <FITID>TXN-60</FITID> // Fabricated ID
+      <NAME>Amazon Digital</NAME>[4]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230725000000[-3:GMT]</DTPOSTED>[26, Derived from 27]
+      <TRNAMT>-25.00</TRNAMT>[5]
+      <FITID>TXN-61</FITID> // Fabricated ID
+      <NAME>Ankar Park</NAME>[5]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>CREDIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230728000000[-3:GMT]</DTPOSTED>[26, Derived from 27]
+      <TRNAMT>6000.27</TRNAMT>[5]
+      <FITID>TXN-62</FITID> // Fabricated ID
+      <NAME>Pagamento em 28 JUL</NAME>[5]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230728000000[-3:GMT]</DTPOSTED>[26, Derived from 27]
+      <TRNAMT>-297.50</TRNAMT>[5]
+      <FITID>TXN-63</FITID> // Fabricated ID
+      <NAME>Mercadolivre*Melishop</NAME>[5]
+     </STMTTRN>
+     <STMTTRN>
+      <TRNTYPE>DEBIT</TRNTYPE>[Derived from 27]
+      <DTPOSTED>20230728000000[-3:GMT]</DTPOSTED>[26, Derived from 27]
+      <TRNAMT>-104.70</TRNAMT>[5]
+      <FITID>TXN-64</FITID> // Fabricated ID
+      <NAME>Pag*Petzlojavirtual</NAME>[5]
+     </STMTTRN>
+    </BANKTRANLIST>
+    <LEDGERBAL>[12]
+     <BALAMT>0.00</BALAMT>[6, 7]
+     <DTASOF>20230806000000[-3:GMT]</DTASOF>[14, Derived from 31]
+    </LEDGERBAL>
+   </CCSTMTRS>
+  </CCSTMTTRNRS>
+ </CREDITCARDMSGSRSV1>
+</OFX>
