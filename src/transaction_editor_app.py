@@ -3,6 +3,8 @@ import pandas as pd
 import os
 from ofx_parser_script import process_all_ofx_files, categorize_transactions, COLUMN_ID, COLUMN_MEMO, COLUMN_MAIN_CATEGORY, COLUMN_SUB_CATEGORY, COLUMN_DATE, COLUMN_AMOUNT, COLUMN_TYPE, COLUMN_ACCOUNT_TYPE
 
+COLUMN_COMBINED_CATEGORY_DISPLAY = "Categoria / Sub categoria" # New constant
+
 USER_CATEGORIES_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'resources', 'user_defined_categories.csv')
 
 def load_user_categories():
@@ -126,30 +128,49 @@ if not raw_transactions_df.empty:
     all_available_main_categories = sorted(list(raw_transactions_df[COLUMN_MAIN_CATEGORY].unique()))
     filter_options = ["All Categories"] + all_available_main_categories
     
+    # Set index=0 to default to "All Categories"
     selected_filter_category = st.selectbox(
         "Filter by Main Category:",
         options=filter_options,
+        index=0, 
         key='filter_main_category'
     )
 
-    # Apply filter and set display_transactions flag
-    display_transactions = False
+    # Determine transactions to display based on filter
     if selected_filter_category == "All Categories":
-        st.write("Please select a category to view and edit transactions.")
-        # Clear session state for transactions if "All Categories" is selected
-        if 'transactions_to_edit' in st.session_state:
-            st.session_state.transactions_to_edit = [] 
+        filtered_transactions_df = raw_transactions_df.copy()
+        if not filtered_transactions_df.empty:
+            st.write(f"Displaying all {len(filtered_transactions_df)} transactions.")
+        # If filtered_transactions_df is empty (i.e. raw_transactions_df was empty), 
+        # the later logic will handle showing "No transactions available".
     else:
         filtered_transactions_df = raw_transactions_df[raw_transactions_df[COLUMN_MAIN_CATEGORY] == selected_filter_category].copy()
-        st.write(f"Displaying {len(filtered_transactions_df)} transactions for category: {selected_filter_category}")
-        display_transactions = True
+        if not filtered_transactions_df.empty:
+            st.write(f"Displaying {len(filtered_transactions_df)} transactions for category: {selected_filter_category}.")
+        # If filtered_transactions_df is empty for a specific category, 
+        # the later logic will handle showing "No transactions found for category...".
+    
+    # display_transactions will always be True if raw_transactions_df is not empty, 
+    # as this whole block is under `if not raw_transactions_df.empty:`
+    display_transactions = True 
+
 
     # --- Session state for editable transactions --- 
-    # Re-initialize session state if filter changes or if it's not initialized
-    if 'last_filter' not in st.session_state or st.session_state.last_filter != selected_filter_category or 'transactions_to_edit' not in st.session_state:
-        if display_transactions:
-            # Ensure COLUMN_ID is included for saving purposes, and add new columns
-            st.session_state.transactions_to_edit = filtered_transactions_df[[COLUMN_ID, COLUMN_DATE, COLUMN_MEMO, COLUMN_AMOUNT, COLUMN_TYPE, COLUMN_ACCOUNT_TYPE, COLUMN_MAIN_CATEGORY, COLUMN_SUB_CATEGORY]].to_dict(orient='records')
+    # Re-initialize session state if filter changes or if it's not initialized,
+    # or if 'transactions_to_edit' is not in session_state (e.g., first load)
+    if ('last_filter' not in st.session_state or \
+        st.session_state.last_filter != selected_filter_category or \
+        'transactions_to_edit' not in st.session_state or \
+        # Force reload if current transactions_to_edit is empty but shouldn't be (e.g. switched to 'All Categories' and it's empty)
+        (not st.session_state.transactions_to_edit and not filtered_transactions_df.empty) or \
+        # Force reload if the number of transactions to edit mismatches the filtered count (covers some edge cases of state)
+        (st.session_state.transactions_to_edit and len(st.session_state.transactions_to_edit) != len(filtered_transactions_df)) and selected_filter_category == st.session_state.get('last_filter', None) ):
+
+
+        if not filtered_transactions_df.empty:
+            temp_df = filtered_transactions_df[[COLUMN_ID, COLUMN_DATE, COLUMN_MEMO, COLUMN_AMOUNT, COLUMN_TYPE, COLUMN_ACCOUNT_TYPE, COLUMN_MAIN_CATEGORY, COLUMN_SUB_CATEGORY]].copy()
+            temp_df[COLUMN_COMBINED_CATEGORY_DISPLAY] = temp_df[COLUMN_MAIN_CATEGORY].astype(str) + " / " + temp_df[COLUMN_SUB_CATEGORY].astype(str)
+            st.session_state.transactions_to_edit = temp_df.to_dict(orient='records')
         else:
             st.session_state.transactions_to_edit = []
         st.session_state.last_filter = selected_filter_category
@@ -161,13 +182,24 @@ if not raw_transactions_df.empty:
             editor_df = pd.DataFrame(st.session_state.transactions_to_edit)
 
             # Prepare category lists for dropdowns in data_editor
-            all_main_categories_for_dropdown = sorted(list(raw_transactions_df[COLUMN_MAIN_CATEGORY].unique()))
-            if 'Não Categorizado' not in all_main_categories_for_dropdown:
-                all_main_categories_for_dropdown.insert(0, 'Não Categorizado')
+            # Create combined category options for the dropdown
+            unique_main_categories = raw_transactions_df[COLUMN_MAIN_CATEGORY].unique()
+            unique_sub_categories = raw_transactions_df[COLUMN_SUB_CATEGORY].unique()
             
-            all_sub_categories_for_dropdown = sorted(list(raw_transactions_df[COLUMN_SUB_CATEGORY].unique()))
-            if 'Não Categorizado' not in all_sub_categories_for_dropdown:
-                all_sub_categories_for_dropdown.insert(0, 'Não Categorizado')
+            all_combined_categories_for_dropdown = set()
+            if not raw_transactions_df.empty:
+                for _, row in raw_transactions_df.iterrows():
+                    main_cat = str(row[COLUMN_MAIN_CATEGORY])
+                    sub_cat = str(row[COLUMN_SUB_CATEGORY])
+                    all_combined_categories_for_dropdown.add(f"{main_cat} / {sub_cat}")
+            
+            # Ensure "Não Categorizado / Não Categorizado" is an option
+            default_combined_category = "Não Categorizado / Não Categorizado"
+            if default_combined_category not in all_combined_categories_for_dropdown:
+                all_combined_categories_for_dropdown.add(default_combined_category)
+            
+            sorted_combined_categories = sorted(list(all_combined_categories_for_dropdown))
+
 
             st.markdown("### Edit Transactions in Table")
             editor_key = "transaction_data_editor"
@@ -179,15 +211,13 @@ if not raw_transactions_df.empty:
                 COLUMN_AMOUNT: st.column_config.NumberColumn("Valor", format="%.2f", disabled=True),
                 COLUMN_TYPE: st.column_config.TextColumn("Type", disabled=True),
                 COLUMN_ACCOUNT_TYPE: st.column_config.TextColumn("Account Type", disabled=True),
-                COLUMN_MAIN_CATEGORY: st.column_config.SelectboxColumn(
-                    "Main Category",
-                    options=all_main_categories_for_dropdown,
-                    required=False # Allow unsetting or set to True if category is mandatory
-                ),
-                COLUMN_SUB_CATEGORY: st.column_config.SelectboxColumn(
-                    "Subcategory",
-                    options=all_sub_categories_for_dropdown,
-                    required=False # Allow unsetting
+                COLUMN_MAIN_CATEGORY: None, # Hide original main category
+                COLUMN_SUB_CATEGORY: None,  # Hide original sub category
+                COLUMN_COMBINED_CATEGORY_DISPLAY: st.column_config.SelectboxColumn(
+                    COLUMN_COMBINED_CATEGORY_DISPLAY,
+                    options=sorted_combined_categories,
+                    required=False,
+                    width="large"  # Added width parameter
                 )
             }
             
@@ -201,43 +231,60 @@ if not raw_transactions_df.empty:
                 num_rows="fixed" # Prevent users from adding/deleting rows
             )
 
-            # Process edits stored in session state by the data_editor
-            # Check if the editor key and 'edited_rows' exist in session_state
-            if editor_key in st.session_state and "edited_rows" in st.session_state[editor_key]:
-                edited_rows_data = st.session_state[editor_key]["edited_rows"] # Get the dictionary of edits
-                
-                if edited_rows_data: # Check if there are any edits recorded
-                    actually_saved_something = False # Flag to track if any save operation occurs
-                    for row_idx_str, changed_cols_dict in edited_rows_data.items():
-                        row_idx = int(row_idx_str) # Convert string row index to int
-                        
-                        # Retrieve transaction ID and original categories from the original editor_df
-                        # (DataFrame initially passed to st.data_editor)
-                        transaction_id_val = editor_df.iloc[row_idx][COLUMN_ID]
-                        original_main_cat_val = editor_df.iloc[row_idx][COLUMN_MAIN_CATEGORY]
-                        original_sub_cat_val = editor_df.iloc[row_idx][COLUMN_SUB_CATEGORY]
-
-                        # Determine new categories, defaulting to original if not present in changed_cols_dict
-                        new_main_cat_val = changed_cols_dict.get(COLUMN_MAIN_CATEGORY, original_main_cat_val)
-                        new_sub_cat_val = changed_cols_dict.get(COLUMN_SUB_CATEGORY, original_sub_cat_val)
-
-                        # Save if categories have actually changed
-                        if (new_main_cat_val != original_main_cat_val or 
-                            new_sub_cat_val != original_sub_cat_val):
-                            save_user_category(transaction_id_val, new_main_cat_val, new_sub_cat_val)
-                            actually_saved_something = True
+            # --- Save All Button ---
+            if st.button("Save All Changes", key="save_all_button"):
+                if editor_key in st.session_state and "edited_rows" in st.session_state[editor_key]:
+                    edited_rows_data = st.session_state[editor_key]["edited_rows"]
                     
-                    if actually_saved_something:
-                        load_all_transactions_data.clear() # Clear cache to reload all data
-                        st.toast("Categories updated successfully!", icon="✅")
+                    if edited_rows_data:
+                        actually_saved_something = False
+                        for row_idx_str, changed_cols_dict in edited_rows_data.items():
+                            row_idx = int(row_idx_str)
+                            
+                            transaction_id_val = editor_df.iloc[row_idx][COLUMN_ID]
+                            original_main_cat_val = editor_df.iloc[row_idx][COLUMN_MAIN_CATEGORY]
+                            original_sub_cat_val = editor_df.iloc[row_idx][COLUMN_SUB_CATEGORY]
+
+                            new_main_cat_val = original_main_cat_val
+                            new_sub_cat_val = original_sub_cat_val
+
+                            if COLUMN_COMBINED_CATEGORY_DISPLAY in changed_cols_dict:
+                                combined_value_str = changed_cols_dict[COLUMN_COMBINED_CATEGORY_DISPLAY]
+                                if combined_value_str and " / " in combined_value_str:
+                                    parts = combined_value_str.split(" / ", 1)
+                                    new_main_cat_val = parts[0].strip()
+                                    new_sub_cat_val = parts[1].strip()
+                                elif combined_value_str: # Handle cases with no " / " (e.g. just main category)
+                                    new_main_cat_val = combined_value_str.strip()
+                                    new_sub_cat_val = "Não Categorizado" # Default sub_category
+                                else: # Handle empty selection
+                                    new_main_cat_val = "Não Categorizado"
+                                    new_sub_cat_val = "Não Categorizado"
+                            
+                            # Save if categories have actually changed
+                            if (new_main_cat_val != original_main_cat_val or 
+                                new_sub_cat_val != original_sub_cat_val):
+                                save_user_category(transaction_id_val, new_main_cat_val, new_sub_cat_val)
+                                actually_saved_something = True
                         
-                        # CRITICAL: Clear the processed edits from session state for this specific editor
-                        st.session_state[editor_key]["edited_rows"] = {} 
-                        
-                        # Rerun the app to reflect changes everywhere
-                        st.rerun()
+                        if actually_saved_something:
+                            load_all_transactions_data.clear()
+                            st.toast("All changes saved successfully!", icon="✅")
+                            st.session_state[editor_key]["edited_rows"] = {} 
+                            st.rerun()
+                        else:
+                            st.toast("No changes to save.", icon="🤷")
+                    else:
+                        st.toast("No edits made to save.", icon="🤷")
+                else:
+                    st.toast("No edits detected.", icon="🤷")
         else: # This means display_transactions is True, but st.session_state.transactions_to_edit is empty
-            st.write(f"No transactions found for category: {selected_filter_category}.")
+            if selected_filter_category == "All Categories" and raw_transactions_df.empty:
+                 st.write("No transactions available to display.")
+            elif selected_filter_category == "All Categories" and not raw_transactions_df.empty: # Should be caught by filtered_transactions_df
+                 st.write("No transactions to display. Check data loading.") # Should ideally not happen if raw_transactions_df is not empty
+            else:
+                 st.write(f"No transactions found for category: {selected_filter_category}.")
     # If display_transactions is False, the message "Please select a category..." is shown earlier.
 
 else:
