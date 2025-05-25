@@ -187,15 +187,15 @@ CATEGORIZATION_RULES = [
     (['google evernote'], ('Serviços Online', 'Outros')),
     (['google storage'], ('Serviços Online', 'Outros')),
     (['github.com'], ('Serviços Online', 'Outros')),
-    (['linkedin'], ('Serviços', 'Assinatura Profissional')),
-    (['linkedin premium'], ('Serviços', 'Assinatura Profissional')),
-    (['dashlane'], ('Serviços', 'Gerenciador de Senhas')),
-    (['trademap'], ('Serviços', 'Plataformas Financeiras')),
-    (['mobills'], ('Serviços', 'Ferramentas Financeiras')),
-    (['locaweb'], ('Serviços', 'Hospedagem Web/Domínio')),
-    (['wix'], ('Serviços', 'Hospedagem Web/Domínio')),
-    (['home assistant cloud'], ('Serviços', 'Assinatura de Nuvem')),
-    (['microsoft*subscription'], ('Serviços', 'Software/Nuvem')),
+    (['linkedin'], ('Serviços Online', 'Outros')),
+    (['linkedin premium'], ('Serviços Online', 'Outros')),
+    (['dashlane'], ('Serviços Online', 'Outros')),
+    (['trademap'], ('Serviços Online', 'Outros')),
+    (['mobills'], ('Serviços Online', 'Outros')),
+    (['locaweb'], ('Serviços Online', 'Hospedagem Web/Domínio')),
+    (['wix'], ('Serviços Online', 'Hospedagem Web/Domínio')),
+    (['home assistant cloud'], ('Serviços Online', 'Assinatura de Nuvem')),
+    (['microsoft*subscription'], ('Serviços Online', 'Outros')),
     (['melimais'], ('Serviços', 'Assinatura Meli+')),
     (['meli+'], ('Serviços', 'Assinatura Meli+')),
     (['crunchyroll'], ('Serviços Online', 'Streaming')),
@@ -250,7 +250,7 @@ CATEGORIZATION_RULES = [
     (['kabum'], ('Compras (Geral)', 'Ecommerce')),
     (['magazine'], ('Compras (Geral)', 'Ecommerce')),
     (['magalu'], ('Compras (Geral)', 'Ecommerce')),
-    (['dell'], ('Compras Online', 'Eletrônicos')),
+    (['dell'], ('Compras (Geral)', 'Eletrônicos')),
     (['dafiti'], ('Compras (Geral)', 'Ecommerce')),
     (['extra.com'], ('Compras (Geral)', 'Ecommerce')),
     (['google play', 'google store'], ('Compras Online', 'Conteúdo Digital')),
@@ -629,6 +629,9 @@ CATEGORIZATION_RULES = [
     (['pix', 'aline maria souza da paz'], ('Moradia', 'Diarista')),
     (['openai'], ('Serviços Online', 'Outros')),
 
+    (['pagamento de fatura'], ('Ignorar', 'Geral')),
+    (['pagamento recebido'], ('Ignorar', 'Geral')),
+
 
     # Generic terms (lower priority - ensure these are LAST or near last within their logical groups)
     (['compra'], ('Compras (Geral)', 'Ecommerce')),
@@ -647,4 +650,19 @@ CATEGORIZATION_RULES = [
     (['gabrielle leithold'], ('Extraordinários', 'Casamento')),
     (['k rcher loja'], ('Moradia', 'Reforma/Manutenção')),
     (['inusual'], ('Moradia', 'Reforma/Manutenção')),
+
+    # --- New Mappings (User Request) ---
+    (['pet servicos'], ('Animais de Estimação', 'Serviços')),
+    (['center castilho'], ('Moradia', 'Reforma/Manutenção')),
+    (['hocca'], ('Alimentação', 'Restaurante/Delivery')),
+    (['capodarte'], ('Pessoais', 'Roupas')),
+    (['leroy'], ('Moradia', 'Reforma/Manutenção')),
+    (['fast shop'], ('Compras (Geral)', 'Eletrônicos/Acessórios')),
+    (['tenente salles'], ('Transporte', 'Combustível')),
+    (['clube extra'], ('Alimentação', 'Supermercado')),
+    (['melissa'], ('Pessoais', 'Roupas')),
+    (['citvet'], ('Animais de Estimação', 'Veterinário')),
+    (['amopatas'], ('Animais de Estimação', 'Veterinário')),
+    (['america sao caetano'], ('Alimentação', 'Restaurante/Delivery')),
+    # --- End of New Mappings ---
 ] 
