@@ -8,18 +8,20 @@ CATEGORIZATION_RULES = [
     (['transferência enviada', 'kaiubi', 'xp invest'], ('Investimentos', 'Geral')),
     (['transferência enviada', 'kaiubi', 'easynvest'], ('Investimentos', 'Geral')),
     (['transferência enviada', 'kaiubi', 'banco c6'], ('Investimentos', 'Geral')),
-    (['transferência enviada', 'kaiubi', 'caixa economica', 'cef'], ('Investimentos', 'Geral')),
+    (['transferência enviada', 'kaiubi', 'caixa economica'], ('Moradia', 'Aluguel/Prestação')),
 
     # Kaiubi Transfers RECEIVED from specific Investment Institutions
     (['transferência recebida', 'kaiubi', 'xp invest'], ('Investimentos', 'Geral')),
-    (['transferência recebida', 'kaiubi', 'Banco XP S.A'], ('Investimentos', 'Geral')),
+    (['transferência', 'kaiubi', 'Banco XP'], ('Investimentos', 'Geral')),
     (['transferência recebida', 'kaiubi', 'easynvest'], ('Investimentos', 'Geral')),
-
     (['transferência recebida', 'kaiubi', 'unibanco'], ('Renda', 'Salário')),
+    (['transferência recebida', 'lais'], ('Renda', 'Lais')),
 
 
     # Specific Account Transfers (New)
     (['iti *kaiubi ferrei'], ('Transferência entre Contas', 'Geral')),
+    (['maria josé'], ('Moradia', 'Diarista')),
+    (['maria jose'], ('Moradia', 'Diarista')),
 
     # Other specific Investment institutions / transactions (New and Existing)
     (['banco topazio'], ('Investimentos', 'Geral')),
@@ -50,11 +52,16 @@ CATEGORIZATION_RULES = [
     (['transferencia doc'], ('Financeiro', 'Transferência Bancária')),
     (['ted'], ('Financeiro', 'Transferência Bancária')),
     (['transferencia ted'], ('Financeiro', 'Transferência Bancária')),
+    (['desconto antecipação'], ('Financeiro', 'Cashback/Recompensas')),
+    (['deposito', 'boleto'], ('Financeiro', 'Transferência Bancária')),
 
     # Specific Payees & Unique Transactions (New and Existing)
     (['tamires rodrigues de sousa'], ('Extraordinários', 'Casa')),
     (['tamires rodrigues de souza'], ('Extraordinários', 'Casa')),
-    (['quality imoveis sp'], ('Moradia', 'Aluguel')),
+    (['quality imoveis sp'], ('Moradia', 'Aluguel/Prestação')),
+    (['quality house sacoma', ('Moradia', 'Condomínio')]),
+    (['condominio vita ipiranga', ('Moradia', 'Condomínio')]),
+    (['grpqa ltda', 'boleto'], ('Moradia', 'Aluguel/Prestação')),
     (['transferência recebida', 'pix', 'srf', 'irpf', '00.394.460/0058-87'], ('Financeiro', 'Restituição de Imposto')),
     (['secr. da receita federal'], ('Financeiro', 'Restituição de Imposto')),
     (['receita federal'], ('Financeiro', 'Restituição de Imposto')),
@@ -70,10 +77,9 @@ CATEGORIZATION_RULES = [
     (['glenda carolina'], ('Extraordinários', 'Casamento')),
     (['solucoees em consultoria integradas'], ('Extraordinários', 'Casamento')),
     (['julio vieira'], ('Educação', 'Cursos')),
-    (['sonho lar consultoria'], ('Moradia', 'Aluguel')),
-    (['maria josé'], ('Moradia', 'Diarista')),
-    (['quintoandar'], ('Moradia', 'Aluguel')),
-    (['quinto andar'], ('Moradia', 'Aluguel')),
+    (['sonho lar'], ('Moradia', 'Aluguel/Prestação')),
+    (['quintoandar'], ('Moradia', 'Aluguel/Prestação')),
+    (['quinto andar'], ('Moradia', 'Aluguel/Prestação')),
     (['amppy'], ('Moradia', 'Diarista')),
     (['dsobral'], ('Moradia', 'Reforma/Manutenção')),
     (['daniel valeriano sobral'], ('Moradia', 'Reforma/Manutenção')),
@@ -129,6 +135,8 @@ CATEGORIZATION_RULES = [
     (['newton sampaio'], ('Viagem', 'Passeios/Atividades')),
     (['transferência enviada pelo pix - adrieli c dos santos'], ('Viagem', 'Despesas Compartilhadas')),
     (['transferência enviada pelo pix - leandro xavier borges'], ('Viagem', 'Despesas Compartilhadas')),
+
+    (['multa transito'], ('Transporte', 'Multas/Imposto')),
 
     # Entertainment (New and Existing - Grouped for clarity)
     (['ticketmaster'], ('Entretenimento', 'Ingressos')),
@@ -196,8 +204,8 @@ CATEGORIZATION_RULES = [
     (['wix'], ('Serviços Online', 'Hospedagem Web/Domínio')),
     (['home assistant cloud'], ('Serviços Online', 'Assinatura de Nuvem')),
     (['microsoft*subscription'], ('Serviços Online', 'Outros')),
-    (['melimais'], ('Serviços', 'Assinatura Meli+')),
-    (['meli+'], ('Serviços', 'Assinatura Meli+')),
+    (['melimais'], ('Serviços Online', 'Outros')),
+    (['meli+'], ('Serviços Online', 'Outros')),
     (['crunchyroll'], ('Serviços Online', 'Streaming')),
     (['curiositystream'], ('Serviços Online', 'Streaming')),
     (['spotify'], ('Serviços Online', 'Streaming')),
@@ -206,7 +214,9 @@ CATEGORIZATION_RULES = [
     (['disneyplus'], ('Serviços Online', 'Streaming')),
     (['disney+'], ('Serviços Online', 'Streaming')),
     (['prime video'], ('Serviços Online', 'Streaming')),
-    (['amazon prime', 'video'], ('Serviços Online', 'Streaming')),
+    (['amazon prime'], ('Serviços Online', 'Streaming')),
+    (['amazonprime'], ('Serviços Online', 'Streaming')),
+    (['amazon aws ser'], ('Serviços Online', 'Outros')),
     (['youtube', 'premium'], ('Serviços Online', 'Streaming')),
     (['google youtube'], ('Serviços Online', 'Streaming')),
     (['google play'], ('Serviços Online', 'Streaming')),
@@ -221,7 +231,7 @@ CATEGORIZATION_RULES = [
     (['coursera'], ('Educação', 'Geral')),
     (['coursra'], ('Educação', 'Geral')),
     (['udemy'], ('Educação', 'Geral')),
-    (['musescore'], ('Educação', 'Aprendizado Musical')),
+    (['musescore'], ('Educação', 'Cursos')),
     (['pianomarvel'], ('Educação', 'Cursos')),
     (['algoexpert'], ('Educação', 'Cursos')),
     (['sunoresearch'], ('Educação', 'Cursos')),
@@ -408,11 +418,11 @@ CATEGORIZATION_RULES = [
 
 
     # Transport
-    (['localiza'], ('Transporte', 'Aluguel de Carro')),
-    (['movida'], ('Transporte', 'Aluguel de Carro')),
-    (['unidas', 'aluguel de carros'], ('Transporte', 'Aluguel de Carro')),
-    (['rentalcars'], ('Transporte', 'Aluguel de Carro')),
-    (['aluguel de carros'], ('Transporte', 'Aluguel de Carro')),
+    (['localiza'], ('Transporte', 'Aluguel/Prestação de Carro')),
+    (['movida'], ('Transporte', 'Aluguel/Prestação de Carro')),
+    (['unidas', 'Aluguel/Prestação de carros'], ('Transporte', 'Aluguel/Prestação de Carro')),
+    (['rentalcars'], ('Transporte', 'Aluguel/Prestação de Carro')),
+    (['Aluguel/Prestação de carros'], ('Transporte', 'Aluguel/Prestação de Carro')),
     (['uber'], ('Transporte', 'Aplicativo')),
     (['99app'], ('Transporte', 'Aplicativo')),
     (['99 taxi'], ('Transporte', 'Aplicativo')),
@@ -463,18 +473,21 @@ CATEGORIZATION_RULES = [
     (['via independencia'], ('Transporte', 'Combustível')),
 
     # Utilities
-    (['conta vivo'], ('Casa', 'Telefone/Internet')),
-    (['vivo'], ('Casa', 'Telefone/Internet')),
-    (['claro'], ('Casa', 'Telefone/Internet')),
-    (['net servicos'], ('Casa', 'Telefone/Internet')),
-    (['telefonica brasil'], ('Casa', 'Telefone/Internet')),
-    (['enelsp'], ('Casa', 'Eletricidade')),
-    (['enel'], ('Casa', 'Eletricidade')),
-    (['light'], ('Casa', 'Eletricidade')),
-    (['cpfl'], ('Casa', 'Eletricidade')),
-    (['sabesp'], ('Casa', 'Água')),
-    (['comgas'], ('Casa', 'Gás')),
-    (['comgás'], ('Casa', 'Gás')),
+    (['conta vivo'], ('Moradia', 'Telefone/Internet')),
+    (['vivo'], ('Moradia', 'Telefone/Internet')),
+    (['claro'], ('Moradia', 'Telefone/Internet')),
+    (['net servicos'], ('Moradia', 'Telefone/Internet')),
+    (['telefonica brasil'], ('Moradia', 'Telefone/Internet')),
+    (['enelsp'], ('Moradia', 'Eletricidade')),
+    (['enel'], ('Moradia', 'Eletricidade')),
+    (['fastnet'], ('Moradia', 'Telefone/Internet')),
+    (['pagamento de boleto efetuado - gvt'], ('Moradia', 'Telefone/Internet')),
+    (['eletropaulo'], ('Moradia', 'Eletricidade')),
+    (['light'], ('Moradia', 'Eletricidade')),
+    (['cpfl'], ('Moradia', 'Eletricidade')),
+    (['sabesp'], ('Moradia', 'Água')),
+    (['comgas'], ('Moradia', 'Gás')),
+    (['comgás'], ('Moradia', 'Gás')),
 
     # Health & Wellness
     (['droga raia'], ('Saúde', 'Farmácia')),
@@ -605,7 +618,7 @@ CATEGORIZATION_RULES = [
     (['ri happy'], ('Compras (Geral)', 'Brinquedos')),
     (['pbkids'], ('Compras (Geral)', 'Brinquedos')),
     (['le biscuit'], ('Compras (Geral)', 'Loja de Variedades')),
-    (['studio'], ('Serviços', 'Barbearia')),
+    (['studio'], ('Pessoais', 'Beleza')),
 
     # Insurance (Non-Health)
     (['tokio marine'], ('Transporte', 'Seguro auto')),
@@ -630,6 +643,7 @@ CATEGORIZATION_RULES = [
     (['openai'], ('Serviços Online', 'Outros')),
 
     (['pagamento de fatura'], ('Ignorar', 'Geral')),
+    (['pagamento da fatura'], ('Ignorar', 'Geral')),
     (['pagamento recebido'], ('Ignorar', 'Geral')),
 
 

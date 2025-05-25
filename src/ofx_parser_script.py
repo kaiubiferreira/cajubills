@@ -92,7 +92,6 @@ def parse_ofx_to_dataframe(file_path: str) -> pd.DataFrame:
     df = pd.DataFrame(transactions_list)
     df[COLUMN_DATE] = pd.to_datetime(df[COLUMN_DATE]).dt.normalize()
     df[COLUMN_AMOUNT] = df[COLUMN_AMOUNT].astype(float)
-    df[COLUMN_AMOUNT] = abs(df[COLUMN_AMOUNT])
     df = df[expected_columns] # Ensure defined column order before adding new ones
     return df
 
