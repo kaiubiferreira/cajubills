@@ -154,18 +154,17 @@ if not raw_transactions_df.empty:
 
     # --- Monthly Income vs Expenses Chart ---
     # st.markdown("---") # Separator - keep this if the section above had one, or manage spacing if not
-    st.header("Monthly Income vs. Expenses")
 
     def prepare_cash_flow_data(df_input):
         if df_input.empty:
-            # Now returns 5 dataframes: net_flow, income_expense_summary, income_ma, expenses_ma, net_flow_ma
-            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame() 
+            # Now returns 6 dataframes: net_flow, income_expense_summary, income_ma, expenses_ma, net_flow_ma, expense_income_ratio
+            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame() 
 
         categories_to_exclude = ['Ignorar', 'Investimentos', 'Extraordinários']
         df_chart = df_input[~df_input[COLUMN_MAIN_CATEGORY].isin(categories_to_exclude)].copy()
         
         if df_chart.empty:
-            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
         df_chart[COLUMN_DATE] = pd.to_datetime(df_chart[COLUMN_DATE])
         df_chart['YearMonth'] = df_chart[COLUMN_DATE].dt.strftime('%Y-%m')
@@ -219,11 +218,31 @@ if not raw_transactions_df.empty:
         expenses_ma_df = expenses_monthly[['YearMonth', 'Expenses_MA']].copy().rename(columns={'Expenses_MA':'MovingAverage'})
         if not expenses_ma_df.empty: expenses_ma_df['MAType'] = 'Expenses MA'
         
-        # Return 5 dataframes now
-        return monthly_net_data, monthly_income_expense_summary, income_ma_df, expenses_ma_df, net_flow_ma_df
+        # 4. Data for Expense/Income Ratio
+        # Use income_monthly (already filtered for 'Renda' and positive) and expenses_monthly (all expenses, negative)
+        ratio_df = pd.merge(
+            income_monthly[['YearMonth', 'Amount']].rename(columns={'Amount': 'Income'}),
+            expenses_monthly[['YearMonth', 'Amount']].rename(columns={'Amount': 'Expenses'}), # Expenses are negative here
+            on='YearMonth',
+            how='outer'
+        ).fillna(0)
 
-    # Unpack 5 dataframes
-    net_flow_data, income_expense_summary_data, income_ma_df, expenses_ma_df, net_flow_ma_df = prepare_cash_flow_data(raw_transactions_df.copy())
+        # Calculate ratio: (abs(Expenses) / Income) * 100
+        # Avoid division by zero if Income is 0. Ratio is NaN in such cases.
+        # If Income > 0 and Expenses == 0, Ratio is 0.
+        # If Income == 0 and Expenses < 0, Ratio is effectively infinite (NaN is fine for plotting).
+        ratio_df['Ratio'] = np.where(
+            ratio_df['Income'] > 0, 
+            (np.abs(ratio_df['Expenses']) / ratio_df['Income']) * 100, 
+            np.nan # Or a large number if you prefer to show something, but NaN breaks lines nicely
+        )
+        monthly_expense_income_ratio_data = ratio_df[['YearMonth', 'Ratio']].sort_values(by='YearMonth')
+
+        # Return 6 dataframes now
+        return monthly_net_data, monthly_income_expense_summary, income_ma_df, expenses_ma_df, net_flow_ma_df, monthly_expense_income_ratio_data
+
+    # Unpack 6 dataframes
+    net_flow_data, income_expense_summary_data, income_ma_df, expenses_ma_df, net_flow_ma_df, expense_income_ratio_data = prepare_cash_flow_data(raw_transactions_df.copy())
 
     # Define stylish colors
     color_income = '#66c2a5'
@@ -231,12 +250,13 @@ if not raw_transactions_df.empty:
     color_income_ma = '#1b9e77'
     color_expenses_ma = '#d95f02'
     color_net_flow_ma = '#7570b3' # A purple for net flow MA
+    color_ratio_line = '#e78ac3' # A pinkish color for the ratio line
 
     # --- Top Row of Charts (Net Flow and Income/Expense Summary) ---
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("Overall Net Monthly Cash Flow")
+        st.subheader("Quanto sobrou?")
         if not net_flow_data.empty:
             base_x_encoding_net = alt.X('YearMonth:O', title='Month', axis=alt.Axis(labelAngle=-45), sort=None)
             
@@ -261,7 +281,7 @@ if not raw_transactions_df.empty:
             st.write("No data for Overall Net Monthly Cash Flow chart.")
 
     with col2:
-        st.subheader("Monthly Income & Expenses Summary")
+        st.subheader("Fluxo de Caixa")
         if not income_expense_summary_data.empty:
             base_x_encoding_summary = alt.X('YearMonth:O', title='Month', axis=alt.Axis(labelAngle=-45), sort=None)
             
@@ -287,11 +307,29 @@ if not raw_transactions_df.empty:
                 tooltip=['YearMonth', alt.Tooltip('MovingAverage:Q', format='.2f', title='Expense MA (3-Month)')]
             )
             
-            income_expense_summary_chart = alt.layer(bars, income_ma_line, expenses_ma_line).resolve_scale(
-                y='shared'
-            ).properties(title='Income and Expenses per Month (with 3-Month MA)')
+            # Ratio Line
+            ratio_line_chart = alt.Chart(expense_income_ratio_data).mark_line(
+                color=color_ratio_line, 
+                point=True, 
+                strokeDash=[2,2], 
+                interpolate='monotone' # Smoother line
+            ).encode(
+                x=alt.X('YearMonth:O', axis=alt.Axis(title=None, labels=False, ticks=False)), # Share X, but hide its axis details for this layer
+                y=alt.Y('Ratio:Q', axis=alt.Axis(title='Expense/Income Ratio (%)', format='~s')), 
+                tooltip=['YearMonth', alt.Tooltip('Ratio:Q', title='Expense/Income Ratio')] # Removed custom format from tooltip
+            )
+
+            # Layer the charts
+            base_chart_with_ma = alt.layer(bars, income_ma_line, expenses_ma_line).resolve_scale(y='shared')
             
-            st.altair_chart(income_expense_summary_chart, use_container_width=True)
+            income_expense_summary_chart_final = alt.layer(
+                base_chart_with_ma, 
+                ratio_line_chart
+            ).resolve_scale(
+                y='independent' # Bars/MAs on left Y, Ratio on right Y
+            ).properties(title='Income & Expenses per Month (with 3-Mo MA & Ratio)')
+            
+            st.altair_chart(income_expense_summary_chart_final, use_container_width=True)
         else:
             st.write("No data for Monthly Income & Expenses Summary chart.")
 
@@ -329,7 +367,7 @@ if not raw_transactions_df.empty:
 
     main_category_expenses_data = prepare_main_category_expense_data(raw_transactions_df.copy())
 
-    st.subheader("Expenses by Main Category")
+    st.subheader("No que foi gasto?")
     if not main_category_expenses_data.empty:
         base_x_exp_main = alt.X('YearMonth:O', title='Month', axis=alt.Axis(labelAngle=-45), sort=None)
         legend_selection_main_exp = alt.selection_point(fields=[COLUMN_MAIN_CATEGORY], bind='legend', name="main_exp_legend")
@@ -454,7 +492,7 @@ if not raw_transactions_df.empty:
     )
 
     # Update chart title to reflect both filters
-    chart_title_subcategory = f"Expenses: Main Cat: {selected_filter_category} / Sub Cat: {selected_sub_category}"
+    chart_title_subcategory = f"Expenses: {selected_filter_category} / {selected_sub_category}"
     st.subheader(chart_title_subcategory)
 
     if not subcategory_bars_data.empty:
