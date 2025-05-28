@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta # For easy date calculations
 COLUMN_COMBINED_CATEGORY_DISPLAY = "Categoria / Sub categoria" # New constant
 
 USER_CATEGORIES_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'resources', 'user_defined_categories.csv')
+USER_BUDGET_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'resources', 'user_defined_budget.csv') # Budget file path
 
 def load_user_categories():
     if os.path.exists(USER_CATEGORIES_FILE):
@@ -31,6 +32,43 @@ def save_user_category(transaction_id, main_category, sub_category):
     new_entry = pd.DataFrame([{COLUMN_ID: transaction_id, COLUMN_MAIN_CATEGORY: main_category, COLUMN_SUB_CATEGORY: sub_category}])
     user_categories_df = pd.concat([user_categories_df, new_entry], ignore_index=True)
     user_categories_df.to_csv(USER_CATEGORIES_FILE, index=False)
+
+# --- Budget Load/Save Functions ---
+def load_user_budget():
+    budget_dict = {}
+    if os.path.exists(USER_BUDGET_FILE):
+        try:
+            budget_df = pd.read_csv(USER_BUDGET_FILE)
+            if not budget_df.empty:
+                for _, row in budget_df.iterrows():
+                    budget_dict[(row['MainCategory'], row['SubCategory'])] = float(row['BudgetAmount'])
+        except pd.errors.EmptyDataError:
+            st.info("Arquivo de orçamento encontrado, mas está vazio.")
+        except Exception as e:
+            st.error(f"Erro ao carregar o arquivo de orçamento: {e}")
+    return budget_dict
+
+def save_user_budget(budget_dict):
+    if not budget_dict: # If dict is empty, can choose to save an empty file or not save at all
+        # For now, let's save an empty file to signify no budget or clear existing.
+        # Or, could skip saving: st.toast("Nenhum orçamento para salvar."); return
+        df_to_save = pd.DataFrame(columns=['MainCategory', 'SubCategory', 'BudgetAmount'])
+    else:
+        records = []
+        for (main_cat, sub_cat), budget_amount in budget_dict.items():
+            records.append({
+                'MainCategory': main_cat,
+                'SubCategory': sub_cat,
+                'BudgetAmount': budget_amount
+            })
+        df_to_save = pd.DataFrame(records)
+    
+    try:
+        df_to_save.to_csv(USER_BUDGET_FILE, index=False)
+        st.toast("Orçamento salvo com sucesso!", icon="✅")
+    except Exception as e:
+        st.error(f"Erro ao salvar o arquivo de orçamento: {e}")
+        st.toast("Falha ao salvar o orçamento.", icon="❌")
 
 def get_project_root():
     # Assumes this script is in src/
@@ -738,19 +776,178 @@ if not raw_transactions_df.empty:
                 else:
                     st.toast("No edits detected.", icon="🤷")
         else: # This means display_transactions is True, but st.session_state.transactions_to_edit is empty
-            if selected_filter_category == "All Categories" and raw_transactions_df.empty:
-                 st.write("No transactions available to display.")
-            elif selected_filter_category == "All Categories" and not raw_transactions_df.empty: # Should be caught by filtered_transactions_df
-                 st.write("No transactions to display. Check data loading.") # Should ideally not happen if raw_transactions_df is not empty
+            if selected_filter_category == "All Categories" and selected_sub_category == "All Subcategories" and raw_transactions_df.empty:
+                 st.write("Não há transações disponíveis para exibir.")
+            elif selected_filter_category == "All Categories" and selected_sub_category == "All Subcategories" and not raw_transactions_df.empty:
+                 st.write("Nenhuma transação para exibir. Verifique o carregamento de dados.")
             else:
-                 st.write(f"No transactions found for category: {selected_filter_category}.")
+                 st.write(f"Nenhuma transação encontrada para os filtros: Principal: '{selected_filter_category}' / Sub: '{selected_sub_category}'.")
     # If display_transactions is False, the message "Please select a category..." is shown earlier.
 
-else:
-    st.warning("No transactions loaded. Please check your OFX file paths and ensure they contain data.")
+    # --- Define Orçamento Mensal ---
+    st.markdown("---")
+    st.header("Definir Orçamento Mensal")
 
-if st.sidebar.button("Refresh All Data"):
-    load_all_transactions_data.clear() # Clear the cache
-    st.rerun() # Rerun the app to reload data from scratch
+    BUDGET_EDITOR_KEY = "budget_editor"
+
+    # Initialize session state for budget values if it doesn't exist, try loading from file
+    if 'budget_values_dict' not in st.session_state:
+        st.session_state.budget_values_dict = load_user_budget() 
+    if 'last_budget_df_for_editor' not in st.session_state: # To resolve edited_rows indices
+        st.session_state.last_budget_df_for_editor = pd.DataFrame()
+
+    def calculate_average_spent(df, main_category, sub_category, end_date_for_avg_calc):
+        if df.empty or pd.isna(end_date_for_avg_calc):
+            return 0.0
+        
+        try:
+            # Ensure end_date_for_avg_calc is a date object if it's datetime
+            if isinstance(end_date_for_avg_calc, pd.Timestamp):
+                end_date_for_avg_calc = end_date_for_avg_calc.date()
+            start_date_for_avg_calc = end_date_for_avg_calc - relativedelta(months=3)
+        except TypeError:
+            return 0.0 # Should not happen if end_date_for_avg_calc is date/Timestamp
+
+        category_df = df[
+            (df[COLUMN_MAIN_CATEGORY] == main_category) &
+            (df[COLUMN_SUB_CATEGORY] == sub_category)
+        ]
+        
+        # Ensure COLUMN_DATE in category_df is datetime.date for comparison
+        # The main raw_transactions_df already converts COLUMN_DATE to datetime.date objects
+        expenses_df = category_df[
+            (category_df[COLUMN_AMOUNT] < 0) &
+            (category_df[COLUMN_DATE] >= start_date_for_avg_calc) &
+            (category_df[COLUMN_DATE] <= end_date_for_avg_calc)
+        ]
+        
+        if expenses_df.empty:
+            return 0.0
+        
+        total_spent = expenses_df[COLUMN_AMOUNT].abs().sum()
+        return round(total_spent / 3.0, 2)
+
+    # Process changes from the data editor from *previous* run's state
+    if (BUDGET_EDITOR_KEY in st.session_state and 
+        "edited_rows" in st.session_state[BUDGET_EDITOR_KEY] and 
+        st.session_state[BUDGET_EDITOR_KEY]["edited_rows"]):
+        
+        edited_rows_indices = st.session_state[BUDGET_EDITOR_KEY]["edited_rows"]
+        
+        if not st.session_state.last_budget_df_for_editor.empty:
+            for row_idx_str, changed_columns in edited_rows_indices.items():
+                row_idx = int(row_idx_str)
+                if "Orçamento (R$)" in changed_columns:
+                    if row_idx < len(st.session_state.last_budget_df_for_editor):
+                        original_row_data = st.session_state.last_budget_df_for_editor.iloc[row_idx]
+                        main_cat_key = original_row_data["Categoria Principal"]
+                        sub_cat_key = original_row_data["Subcategoria"]
+                        
+                        new_budget_value = changed_columns["Orçamento (R$)"]
+                        st.session_state.budget_values_dict[(main_cat_key, sub_cat_key)] = float(new_budget_value)
+        
+        st.session_state[BUDGET_EDITOR_KEY]["edited_rows"] = {} # Clear after processing
+
+    budget_table_data_list = []
+    if not raw_transactions_df.empty:
+        budgetable_df = raw_transactions_df[
+            ~raw_transactions_df[COLUMN_MAIN_CATEGORY].isin(['Ignorar', 'Extraordinários'])
+        ].copy()
+
+        if not budgetable_df.empty:
+            # raw_transactions_df[COLUMN_DATE] should already be datetime.date objects
+            latest_date_in_view = budgetable_df[COLUMN_DATE].max()
+            if pd.isna(latest_date_in_view):
+                latest_date_in_view = date.today() 
+
+            unique_categories = budgetable_df[[COLUMN_MAIN_CATEGORY, COLUMN_SUB_CATEGORY]].drop_duplicates().sort_values(
+                by=[COLUMN_MAIN_CATEGORY, COLUMN_SUB_CATEGORY]
+            )
+
+            for _, row in unique_categories.iterrows():
+                mc = row[COLUMN_MAIN_CATEGORY]
+                sc = row[COLUMN_SUB_CATEGORY]
+                avg_spent = calculate_average_spent(budgetable_df, mc, sc, latest_date_in_view)
+                current_budget = st.session_state.budget_values_dict.get((mc, sc), 0.0)
+                
+                budget_table_data_list.append({
+                    "Categoria Principal": mc,
+                    "Subcategoria": sc,
+                    "Média Gasto (3M)": avg_spent,
+                    "Orçamento (R$)": current_budget
+                })
+
+    current_budget_df_for_editor = pd.DataFrame(budget_table_data_list)
+    # Save the DataFrame that will be passed to the editor, for resolving edited_rows indices on the next run
+    st.session_state.last_budget_df_for_editor = current_budget_df_for_editor.copy()
+
+    if not current_budget_df_for_editor.empty:
+        st.data_editor(
+            current_budget_df_for_editor,
+            column_config={
+                "Categoria Principal": st.column_config.TextColumn(disabled=True, help="Categoria principal da transação."),
+                "Subcategoria": st.column_config.TextColumn(disabled=True, help="Subcategoria da transação."),
+                "Média Gasto (3M)": st.column_config.NumberColumn(format="R$ %.2f", disabled=True, help="Média mensal de gastos para esta subcategoria nos últimos 3 meses."),
+                "Orçamento (R$)": st.column_config.NumberColumn(format="R$ %.2f", min_value=0.0, step=10.0, required=True, help="Defina o valor orçado para esta subcategoria.")
+            },
+            key=BUDGET_EDITOR_KEY,
+            num_rows="fixed",
+            hide_index=True,
+            use_container_width=True
+        )
+    else:
+        st.write("Não há categorias para exibir na tabela de orçamento (verifique os filtros de data ou dados de transação).")
+
+    # Calculate and display budget summaries based on the latest budget_values_dict
+    total_budgeted_income = 0.0
+    total_budgeted_expenses = 0.0
+    total_budgeted_investments = 0.0
+    INCOME_CATEGORIES = ["Renda"] 
+    INVESTMENT_CATEGORIES = ["Investimentos"]
+
+    for (main_cat, _), budget_val in st.session_state.budget_values_dict.items():
+        budget_val = float(budget_val) # Ensure it's a float
+        if main_cat in INCOME_CATEGORIES:
+            total_budgeted_income += budget_val
+        elif main_cat in INVESTMENT_CATEGORIES:
+            total_budgeted_investments += budget_val
+        elif main_cat not in ['Ignorar', 'Extraordinários']: # Already filtered out from budgetable_df
+            total_budgeted_expenses += budget_val
+            
+    st.markdown("---")
+    st.subheader("Resumo do Orçamento")
+    # Calculate "Disponível"
+    available_budget = total_budgeted_income - total_budgeted_expenses - total_budgeted_investments
+
+    col_summary1, col_summary2, col_summary3, col_summary4 = st.columns(4) # Added a fourth column
+    with col_summary1:
+        st.metric(label="Total de Renda Orçada", value=f"R$ {total_budgeted_income:.2f}")
+    with col_summary2:
+        expense_percentage_str = "(N/A)"
+        if total_budgeted_income > 0:
+            expense_percentage = (total_budgeted_expenses / total_budgeted_income) * 100
+            expense_percentage_str = f"({expense_percentage:.1f}%)"
+        st.metric(label="Total de Despesas Orçadas", value=f"R$ {total_budgeted_expenses:.2f} {expense_percentage_str}")
+    with col_summary3:
+        investment_percentage_str = "(N/A)"
+        if total_budgeted_income > 0:
+            investment_percentage = (total_budgeted_investments / total_budgeted_income) * 100
+            investment_percentage_str = f"({investment_percentage:.1f}%)"
+        st.metric(label="Total de Investimentos Orçados", value=f"R$ {total_budgeted_investments:.2f} {investment_percentage_str}")
+    with col_summary4: # New column for "Disponível"
+        st.metric(label="Disponível", value=f"R$ {available_budget:.2f}", delta_color="off")
+
+    # Save Budget Button
+    if st.button("Salvar Orçamento", key="save_budget_button"):
+        save_user_budget(st.session_state.budget_values_dict)
+
+else:
+    st.warning("Não há transações carregadas. Verifique os caminhos dos seus arquivos OFX e garanta que eles contêm dados e que o período selecionado possui transações.")
+
+if st.sidebar.button("Recarregar Todos os Dados"):
+    load_all_transactions_data.clear() 
+    # Potentially clear other session state items if needed, e.g., budget_values_dict if it shouldn't persist across full refresh
+    # For now, budget_values_dict persists in session unless app restarts or explicitly cleared.
+    st.rerun()
 
 # To run this app: streamlit run src/transaction_editor_app.py 
