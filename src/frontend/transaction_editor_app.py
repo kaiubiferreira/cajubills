@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import altair as alt
 import numpy as np # Added numpy for np.nan
-from ofx_parser_script import process_all_ofx_files, categorize_transactions, COLUMN_ID, COLUMN_MEMO, COLUMN_MAIN_CATEGORY, COLUMN_SUB_CATEGORY, COLUMN_DATE, COLUMN_AMOUNT, COLUMN_TYPE, COLUMN_ACCOUNT_TYPE
+from backend.spending.spending import process_all_ofx_files, categorize_transactions, COLUMN_ID, COLUMN_MEMO, COLUMN_MAIN_CATEGORY, COLUMN_SUB_CATEGORY, COLUMN_DATE, COLUMN_AMOUNT, COLUMN_TYPE, COLUMN_ACCOUNT_TYPE
 from datetime import date # Added for date operations
 from dateutil.relativedelta import relativedelta # For easy date calculations
 

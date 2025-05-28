@@ -5,7 +5,7 @@ from cachetools import TTLCache
 from cachetools import cached
 from oauth2client.service_account import ServiceAccountCredentials
 
-from contants import *
+from backend.investments.contants import *
 
 cache = TTLCache(maxsize=1, ttl=3600)  # Cache can hold 1 item, expires after 1 hour
 
@@ -14,7 +14,7 @@ cache = TTLCache(maxsize=1, ttl=3600)  # Cache can hold 1 item, expires after 1 
 def connect():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     current_dir = os.path.dirname(os.path.abspath(__file__))  # Path to the directory of the current script
-    key_file_path = os.path.join(current_dir, '..', 'resources', 'google_sheets_key.json')
+    key_file_path = os.path.join(current_dir, '../../..', 'resources', 'google_sheets_key.json')
     creds = ServiceAccountCredentials.from_json_keyfile_name(key_file_path, scope)
     client = gspread.authorize(creds)
 
@@ -110,3 +110,4 @@ def get_target():
          str(d['percentage'])) for d in data]
 
     return data_tuple
+

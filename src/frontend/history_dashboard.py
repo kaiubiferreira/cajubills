@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from contants import EQUITY_TARGET, FIXED_INCOME_TARGET, BIRTH_DATE
+from backend.investments.contants import EQUITY_TARGET, FIXED_INCOME_TARGET, BIRTH_DATE
 from sql.connection import run_query
 
 
