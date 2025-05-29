@@ -43,12 +43,13 @@ def get_dates():
     return run_query(query, target_db="local")
 
 def get_summary_returns(start_date, end_date):
-    # Adjusted for SQLite - using strftime instead of YEAR() and MONTH() functions
-    query = ("SELECT (CAST(strftime('%Y', '" + str(start_date) + "') AS INTEGER) || '-' || printf('%02d', CAST(strftime('%m', '" + str(start_date) + "') AS INTEGER))) AS 'year_month', total_deposit, total_profit, "
+    # Adjusted for SQLite - using the actual year and month columns from the table
+    query = ("SELECT (year || '-' || printf('%02d', month)) AS 'year_month', total_deposit, total_profit, "
              "moving_avg_profit_6, moving_avg_profit_12, moving_avg_deposit_6, moving_avg_deposit_12, "
              "total_return, moving_avg_return_6, moving_avg_return_12 "
              "FROM summary_returns "
-             f"WHERE CAST(strftime('%Y', '{start_date}') AS INTEGER) <= year AND year <= CAST(strftime('%Y', '{end_date}') AS INTEGER)")
+             f"WHERE CAST(strftime('%Y', '{start_date}') AS INTEGER) <= year AND year <= CAST(strftime('%Y', '{end_date}') AS INTEGER) "
+             "ORDER BY year, month")
     
     monthly_returns = run_query(query, target_db="local")
     if not monthly_returns.empty:
@@ -110,72 +111,21 @@ def get_last_state():
     """)
     return run_query(query, target_db="local")
 
-def get_last_results():
-    query = ("""
-        SELECT total_deposit, total_profit, total_return,
-        moving_avg_deposit_12, moving_avg_profit_12, moving_avg_return_12
-        FROM summary_returns
-        ORDER BY year DESC, month DESC
-        LIMIT 1 
-    """)
-    return run_query(query, target_db="local")
-
 def format_currency(amount, currency_symbol) -> str:
     formatted_amount = f"{amount:,.2f}"
     return f"{currency_symbol} {formatted_amount}"
 
-def plot_last_results():
-    st.header("📊 Current Investment Summary")
-    
-    # Get the last results from the database
-    df = get_last_results()
-    
-    if df.empty:
-        st.warning("No investment data found in database.")
-        return
-
-    total_deposit = df['total_deposit'].iloc[0]
-    total_profit = df['total_profit'].iloc[0]
-    total_return = df['total_return'].iloc[0]
-    moving_avg_deposit_12 = df['moving_avg_deposit_12'].iloc[0]
-    moving_avg_profit_12 = df['moving_avg_profit_12'].iloc[0]
-    moving_avg_return_12 = df['moving_avg_return_12'].iloc[0]
-
-    # Display metrics using Streamlit's built-in components
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric(
-            label="💰 Total Deposits",
-            value=format_currency(total_deposit, 'R$'),
-            delta=f"12m avg: {format_currency(moving_avg_deposit_12, 'R$')}"
-        )
-    
-    with col2:
-        st.metric(
-            label="📈 Total Profit",
-            value=format_currency(total_profit, 'R$'),
-            delta=f"12m avg: {format_currency(moving_avg_profit_12, 'R$')}"
-        )
-    
-    with col3:
-        st.metric(
-            label="🎯 Total Return",
-            value=f"{total_return:.2f}%",
-            delta=f"12m avg: {moving_avg_return_12:.2f}%"
-        )
-
 def plot_forecast(current_balance):
-    st.header("📮 Investment Forecast")
+    st.header("📮 Projeção de Investimentos")
     
     col1, col2 = st.columns(2)
     with col1:
-        deposit = st.number_input("Monthly Deposit (R$):", value=1000.0, min_value=0.0, step=100.0, format="%.2f")
+        deposit = st.number_input("Depósito Mensal (R$):", value=1000.0, min_value=0.0, step=100.0, format="%.2f")
     with col2:
-        monthly_return_rate = st.number_input("Expected Monthly Return (%):", value=0.75, min_value=0.0, max_value=5.0, step=0.01, format="%.2f") / 100
+        monthly_return_rate = st.number_input("Retorno Mensal Esperado (%):", value=0.75, min_value=0.0, max_value=5.0, step=0.01, format="%.2f") / 100
 
     # Create date range for the next N years
-    forecast_years = st.slider("Forecast Horizon (Years):", min_value=1, max_value=40, value=20)
+    forecast_years = st.slider("Horizonte de Projeção (Anos):", min_value=1, max_value=40, value=20)
     current_date = datetime.now()
     date_list = [current_date + timedelta(days=30 * i) for i in range(forecast_years * 12)]
 
@@ -198,9 +148,9 @@ def plot_forecast(current_balance):
     df_forecast = pd.DataFrame(data={'Date': date_list, 'Balance': balance_list, 'Age': age_list})
 
     # Create forecast chart
-    fig_forecast = px.area(df_forecast, x='Date', y='Balance', title='Portfolio Growth Projection', hover_data=['Age'])
-    fig_forecast.update_xaxes(title_text='Date')
-    fig_forecast.update_yaxes(title_text='Projected Balance (R$)')
+    fig_forecast = px.area(df_forecast, x='Date', y='Balance', title='Projeção de Crescimento da Carteira', hover_data=['Age'])
+    fig_forecast.update_xaxes(title_text='Data')
+    fig_forecast.update_yaxes(title_text='Saldo Projetado (R$)')
     st.plotly_chart(fig_forecast, use_container_width=True)
 
     # Investment milestones
@@ -220,42 +170,83 @@ def plot_forecast(current_balance):
                 projected_return = target_row['Balance'] * monthly_return_rate
 
                 if months_to_reach > 12:
-                    time_to_reach = f"{years_to_reach} year(s) and {months_remaining} month(s)"
+                    time_to_reach = f"{years_to_reach} ano(s) e {months_remaining} mês(es)"
                 else:
-                    time_to_reach = f"{months_to_reach} months"
+                    time_to_reach = f"{months_to_reach} meses"
 
                 milestones_data.append({
-                    'Target': format_currency(target, 'R$'),
-                    'Time to Reach': time_to_reach,
-                    'Target Date': target_month_str,
-                    'Age at Target': f"{age_years} years",
-                    'Monthly Return at Target': format_currency(projected_return, 'R$')
+                    'Meta': format_currency(target, 'R$'),
+                    'Tempo para Alcançar': time_to_reach,
+                    'Data da Meta': target_month_str,
+                    'Idade na Meta': f"{age_years} anos",
+                    'Retorno Mensal na Meta': format_currency(projected_return, 'R$')
                 })
 
     if milestones_data:
-        st.subheader("🎯 Investment Milestones")
+        st.subheader("🎯 Marcos dos Investimentos")
         st.dataframe(pd.DataFrame(milestones_data), hide_index=True)
 
 def plot_summary():
-    st.header("💼 Current Portfolio Allocation")
+    st.header("💰 Resumo da Carteira")
     
-    aporte_input = st.number_input("Simulate Monthly Contribution (R$):", value=0.0, min_value=0.0, step=100.0, format="%.2f")
-    
+    # Get portfolio data first to calculate total value
     df = get_last_state()
     if df.empty:
-        st.warning("No current portfolio data found.")
+        st.warning("Nenhum dado da carteira atual encontrado.")
         return
     
-    fixed_income_target = FIXED_INCOME_TARGET
-    equity_target = EQUITY_TARGET
-
     fixed_income_sum = df[df['type'] == 'fixed_income']['value'].sum()
     equity_sum = df[df['type'] == 'equity']['value'].sum()
     total_sum = fixed_income_sum + equity_sum
     
+    # Get 6-month averages
+    six_months_query = ("""
+        SELECT 
+            AVG(moving_avg_deposit_6) as avg_deposit_6m,
+            AVG(moving_avg_profit_6) as avg_profit_6m
+        FROM summary_returns 
+        WHERE moving_avg_deposit_6 IS NOT NULL AND moving_avg_profit_6 IS NOT NULL
+        ORDER BY year DESC, month DESC
+        LIMIT 6
+    """)
+    
+    six_months_data = run_query(six_months_query, target_db="local")
+    
+    # Display main metrics first - 3 columns
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            label="💰 Valor Total da Carteira",
+            value=format_currency(total_sum, 'R$')
+        )
+    
+    if not six_months_data.empty:
+        avg_deposit_6m = six_months_data['avg_deposit_6m'].iloc[0] if not pd.isna(six_months_data['avg_deposit_6m'].iloc[0]) else 0
+        avg_profit_6m = six_months_data['avg_profit_6m'].iloc[0] if not pd.isna(six_months_data['avg_profit_6m'].iloc[0]) else 0
+        
+        with col2:
+            st.metric(
+                label="📊 Média de Aporte (6 meses)",
+                value=format_currency(avg_deposit_6m, 'R$')
+            )
+        
+        with col3:
+            st.metric(
+                label="📈 Média de Rendimento (6 meses)",
+                value=format_currency(avg_profit_6m, 'R$')
+            )
+    
+    st.markdown("---")
+    
+    aporte_input = st.number_input("Simular Contribuição Mensal (R$):", value=0.0, min_value=0.0, step=100.0, format="%.2f")
+    
     if total_sum == 0:
-        st.warning("Total portfolio value is zero.")
+        st.warning("O valor total da carteira é zero.")
         return
+    
+    fixed_income_target = FIXED_INCOME_TARGET
+    equity_target = EQUITY_TARGET
     
     fixed_income_percentage = 100 * fixed_income_sum / total_sum
     equity_percentage = 100 * equity_sum / total_sum
@@ -266,30 +257,30 @@ def plot_summary():
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("🏦 Fixed Income")
+        st.subheader("🏦 Renda Fixa")
         st.metric(
-            label=f"Target: {fixed_income_target}%",
+            label=f"Meta: {fixed_income_target}%",
             value=f"{fixed_income_percentage:.1f}%",
             delta=f"{fixed_income_diff:.1f}%"
         )
         st.progress(min(fixed_income_percentage / 100, 1.0))
-        st.caption(f"Value: {format_currency(fixed_income_sum, 'R$')}")
+        st.caption(f"Valor: {format_currency(fixed_income_sum, 'R$')}")
 
     with col2:
-        st.subheader("📈 Equity")
+        st.subheader("📈 Renda Variável")
         st.metric(
-            label=f"Target: {equity_target}%",
+            label=f"Meta: {equity_target}%",
             value=f"{equity_percentage:.1f}%",
             delta=f"{equity_diff:.1f}%"
         )
         st.progress(min(equity_percentage / 100, 1.0))
-        st.caption(f"Value: {format_currency(equity_sum, 'R$')}")
+        st.caption(f"Valor: {format_currency(equity_sum, 'R$')}")
 
     # Detailed allocation table
-    st.subheader("📋 Detailed Asset Allocation")
+    st.subheader("📋 Alocação Detalhada de Ativos")
     
     if aporte_input > 0:
-        st.info(f"Rebalancing suggestions based on R$ {aporte_input:,.2f} monthly contribution:")
+        st.info(f"Sugestões de rebalanceamento baseadas em contribuição mensal de R$ {aporte_input:,.2f}:")
     
     # Prepare display data
     display_data = []
@@ -314,43 +305,40 @@ def plot_summary():
         suggested_aport = diff_ratio * aporte_input if aporte_input > 0 else 0
         
         display_data.append({
-            'Asset': asset,
-            'Type': '🏦 Fixed Income' if asset_type == 'fixed_income' else '📈 Equity',
-            'Current Value': format_currency(value, 'R$'),
-            'Target %': f"{expected_percentage_float:.1f}%",
-            'Actual %': f"{actual_percentage_float:.1f}%",
-            'Difference': format_currency(absolute_diff, 'R$'),
-            'Suggested Allocation': format_currency(suggested_aport, 'R$') if aporte_input > 0 else '-'
+            'Ativo': asset,
+            'Tipo': '🏦 Renda Fixa' if asset_type == 'fixed_income' else '📈 Renda Variável',
+            'Valor Atual': format_currency(value, 'R$'),
+            'Meta %': f"{expected_percentage_float:.1f}%",
+            'Atual %': f"{actual_percentage_float:.1f}%",
+            'Diferença': format_currency(absolute_diff, 'R$'),
+            'Alocação Sugerida': format_currency(suggested_aport, 'R$') if aporte_input > 0 else '-'
         })
     
     df_display = pd.DataFrame(display_data)
     st.dataframe(df_display, hide_index=True, use_container_width=True)
-    
-    st.subheader("💰 Portfolio Summary")
-    st.metric(label="Total Portfolio Value", value=format_currency(total_sum, 'R$'))
 
 def plot_history():
-    st.header("📊 Historical Performance")
+    st.header("📊 Performance Histórica")
     
     dates = get_dates()
     if dates.empty:
-        st.warning("No historical data available.")
+        st.warning("Nenhum dado histórico disponível.")
         return
 
     # Date selection in sidebar
     with st.sidebar:
-        st.header("📅 History Date Range")
+        st.header("📅 Período do Histórico")
         max_date = pd.to_datetime(dates['end_date'].iloc[0])
         min_date = pd.to_datetime(dates['start_date'].iloc[0])
         default_start = max_date - pd.DateOffset(years=2)
         if default_start < min_date:
             default_start = min_date
         
-        start_date = st.date_input('Start Date', value=default_start.date(), min_value=min_date.date(), max_value=max_date.date())
-        end_date = st.date_input('End Date', value=max_date.date(), min_value=min_date.date(), max_value=max_date.date())
+        start_date = st.date_input('Data Inicial', value=default_start.date(), min_value=min_date.date(), max_value=max_date.date())
+        end_date = st.date_input('Data Final', value=max_date.date(), min_value=min_date.date(), max_value=max_date.date())
 
     if start_date > end_date:
-        st.error("End date must be after start date.")
+        st.error("A data final deve ser posterior à data inicial.")
         return
 
     # Load historical data
@@ -366,11 +354,11 @@ def plot_history():
             daily_balance,
             x='date',
             y='value',
-            title='📈 Portfolio Value Over Time'
+            title='📈 Valor da Carteira ao Longo do Tempo'
         )
         st.plotly_chart(fig_balance, use_container_width=True)
     else:
-        st.info("No portfolio balance data available for the selected period.")
+        st.info("Nenhum dado de saldo da carteira disponível para o período selecionado.")
 
     # Asset allocation charts
     col1, col2 = st.columns(2)
@@ -382,15 +370,15 @@ def plot_history():
                 x='date',
                 y='percentage',
                 color='type',
-                title='🎯 Asset Allocation (%) Over Time',
+                title='🎯 Alocação de Ativos (%) ao Longo do Tempo',
             )
 
             fig_percentage.add_hline(y=EQUITY_TARGET, line_dash="dash", line_color="red",
-                                   annotation_text=f"Equity Target ({EQUITY_TARGET}%)",
+                                   annotation_text=f"Meta Renda Variável ({EQUITY_TARGET}%)",
                                    annotation_position="bottom right")
             
             fig_percentage.add_hline(y=FIXED_INCOME_TARGET, line_dash="dash", line_color="blue",
-                                   annotation_text=f"Fixed Income Target ({FIXED_INCOME_TARGET}%)",
+                                   annotation_text=f"Meta Renda Fixa ({FIXED_INCOME_TARGET}%)",
                                    annotation_position="top right")
 
             fig_percentage.update_layout(
@@ -404,7 +392,7 @@ def plot_history():
             )
             st.plotly_chart(fig_percentage, use_container_width=True)
         else:
-            st.info("No allocation percentage data available.")
+            st.info("Nenhum dado de porcentagem de alocação disponível.")
 
     with col2:
         if not daily_balance_by_type.empty:
@@ -413,7 +401,7 @@ def plot_history():
                 x='date',
                 y='value',
                 color='type',
-                title='💰 Asset Value (R$) by Type Over Time'
+                title='💰 Valor de Ativos (R$) por Tipo ao Longo do Tempo'
             )
             fig_type.update_layout(
                 legend=dict(
@@ -426,7 +414,7 @@ def plot_history():
             )
             st.plotly_chart(fig_type, use_container_width=True)
         else:
-            st.info("No asset value data available.")
+            st.info("Nenhum dado de valor de ativos disponível.")
 
     # Asset breakdown chart
     if not daily_balance_by_asset.empty:
@@ -435,21 +423,21 @@ def plot_history():
             x='date',
             y='value',
             color='asset',
-            title='📊 Portfolio Value by Asset Over Time'
+            title='📊 Valor da Carteira por Ativo ao Longo do Tempo'
         )
         st.plotly_chart(fig_asset, use_container_width=True)
 
     # Returns analysis
     if not monthly_returns.empty:
-        st.subheader("💹 Returns vs Deposits Analysis")
+        st.subheader("💹 Análise de Retornos vs Depósitos")
 
         # Monthly returns and deposits
         fig_returns_deposits = px.bar(monthly_returns,
                                       x='year_month',
                                       y=['total_profit', 'total_deposit'],
                                       barmode='group',
-                                      labels={'value': 'Amount (R$)', 'year_month': 'Year-Month'},
-                                      title='📊 Monthly Profit vs Deposits',
+                                      labels={'value': 'Valor (R$)', 'year_month': 'Ano-Mês'},
+                                      title='📊 Lucro Mensal vs Depósitos',
                                       color_discrete_map={'total_profit': '#2ca02c', 'total_deposit': '#ff7f0e'})
         st.plotly_chart(fig_returns_deposits, use_container_width=True)
 
@@ -457,8 +445,8 @@ def plot_history():
         fig_ma_returns_deposits = px.line(monthly_returns,
                                          x='year_month',
                                          y=['moving_avg_profit_12', 'moving_avg_deposit_12'],
-                                         labels={'value': 'Amount (R$)', 'year_month': 'Year-Month'},
-                                         title='📈 12-Month Moving Averages: Returns & Deposits',
+                                         labels={'value': 'Valor (R$)', 'year_month': 'Ano-Mês'},
+                                         title='📈 Médias Móveis de 12 Meses: Retornos e Depósitos',
                                          color_discrete_map={'moving_avg_profit_12': '#1f77b4', 'moving_avg_deposit_12': '#d62728'})
         st.plotly_chart(fig_ma_returns_deposits, use_container_width=True)
 
@@ -468,11 +456,11 @@ def plot_history():
                                            x='year_month',
                                            y='net_increase',
                                            color="asset",
-                                           title='📊 Monthly Net Increase by Asset')
+                                           title='📊 Aumento Líquido Mensal por Ativo')
             st.plotly_chart(fig_increase_by_asset, use_container_width=True)
 
         # Detailed returns analysis
-        st.subheader("📈 Detailed Returns Analysis")
+        st.subheader("📈 Análise Detalhada de Retornos")
         
         col1, col2 = st.columns(2)
         
@@ -480,45 +468,45 @@ def plot_history():
             fig_returns = go.Figure()
             fig_returns.add_trace(
                 go.Bar(x=monthly_returns['year_month'], y=monthly_returns['total_profit'], 
-                       name='Total Profit', marker_color='skyblue'))
+                       name='Lucro Total', marker_color='skyblue'))
             fig_returns.add_trace(
                 go.Scatter(x=monthly_returns['year_month'], y=monthly_returns['moving_avg_profit_6'],
-                           name='6-Month MA', mode='lines+markers',
+                           name='MM 6 Meses', mode='lines+markers',
                            line=dict(color='orange', width=2)))
             fig_returns.add_trace(
                 go.Scatter(x=monthly_returns['year_month'], y=monthly_returns['moving_avg_profit_12'],
-                           name='12-Month MA', mode='lines+markers',
+                           name='MM 12 Meses', mode='lines+markers',
                            line=dict(color='green', width=2)))
-            fig_returns.update_layout(title='💰 Profit with Moving Averages',
-                                      xaxis_title='Year-Month',
-                                      yaxis_title='Amount (R$)')
+            fig_returns.update_layout(title='💰 Lucro com Médias Móveis',
+                                      xaxis_title='Ano-Mês',
+                                      yaxis_title='Valor (R$)')
             st.plotly_chart(fig_returns, use_container_width=True)
 
         with col2:
             fig_returns_percentage = go.Figure()
             fig_returns_percentage.add_trace(
                 go.Bar(x=monthly_returns['year_month'], y=monthly_returns['total_return'], 
-                       name='Total Return', marker_color='lightgreen'))
+                       name='Retorno Total', marker_color='lightgreen'))
             fig_returns_percentage.add_trace(
                 go.Scatter(x=monthly_returns['year_month'], y=monthly_returns['moving_avg_return_6'],
-                           name='6-Month MA', mode='lines+markers',
+                           name='MM 6 Meses', mode='lines+markers',
                            line=dict(color='orange', width=2)))
             fig_returns_percentage.add_trace(
                 go.Scatter(x=monthly_returns['year_month'], y=monthly_returns['moving_avg_return_12'],
-                           name='12-Month MA', mode='lines+markers',
+                           name='MM 12 Meses', mode='lines+markers',
                            line=dict(color='green', width=2)))
-            fig_returns_percentage.update_layout(title='📊 Return % with Moving Averages',
-                                                  xaxis_title='Year-Month',
-                                                  yaxis_title='Return (%)')
+            fig_returns_percentage.update_layout(title='📊 Retorno % com Médias Móveis',
+                                                  xaxis_title='Ano-Mês',
+                                                  yaxis_title='Retorno (%)')
             st.plotly_chart(fig_returns_percentage, use_container_width=True)
 
 # Main page configuration
-st.set_page_config(page_title="Investment Dashboard", page_icon="💰", layout="wide")
-st.title("💰 Investment Dashboard")
+st.set_page_config(page_title="Painel de Investimentos", page_icon="💰", layout="wide")
+st.title("Painel de Investimentos")
 
 # Database debugging section
-with st.expander("🔍 Database Debug Information", expanded=False):
-    st.subheader("Investment Tables Status")
+with st.expander("🔍 Informações de Debug do Banco de Dados", expanded=False):
+    st.subheader("Status das Tabelas de Investimentos")
     
     tables_to_check = [
         "daily_balance",
@@ -544,7 +532,7 @@ with st.expander("🔍 Database Debug Information", expanded=False):
             
             if not result.empty:
                 row_count = result['row_count'].iloc[0]
-                status = "✅ Has data" if row_count > 0 else "⚠️ Empty"
+                status = "✅ Tem dados" if row_count > 0 else "⚠️ Vazia"
                 
                 # Get date range for time-series tables
                 date_info = ""
@@ -555,30 +543,30 @@ with st.expander("🔍 Database Debug Information", expanded=False):
                         if not date_result.empty and row_count > 0:
                             min_date = date_result['min_date'].iloc[0]
                             max_date = date_result['max_date'].iloc[0]
-                            date_info = f" | {min_date} to {max_date}"
+                            date_info = f" | {min_date} até {max_date}"
                     except:
-                        date_info = " | Date range unavailable"
+                        date_info = " | Período de datas indisponível"
                         
                 debug_results.append({
-                    "Table": table,
+                    "Tabela": table,
                     "Status": status,
-                    "Row Count": row_count,
-                    "Additional Info": date_info
+                    "Quantidade de Linhas": row_count,
+                    "Informações Adicionais": date_info
                 })
             else:
                 debug_results.append({
-                    "Table": table,
-                    "Status": "❌ Query failed",
-                    "Row Count": 0,
-                    "Additional Info": ""
+                    "Tabela": table,
+                    "Status": "❌ Query falhou",
+                    "Quantidade de Linhas": 0,
+                    "Informações Adicionais": ""
                 })
                 
         except Exception as e:
             debug_results.append({
-                "Table": table,
-                "Status": "❌ Error",
-                "Row Count": 0,
-                "Additional Info": str(e)
+                "Tabela": table,
+                "Status": "❌ Erro",
+                "Quantidade de Linhas": 0,
+                "Informações Adicionais": str(e)
             })
     
     # Display results
@@ -586,23 +574,23 @@ with st.expander("🔍 Database Debug Information", expanded=False):
     st.dataframe(debug_df, hide_index=True, use_container_width=True)
     
     # Summary
-    empty_tables = [r["Table"] for r in debug_results if r["Row Count"] == 0]
-    error_tables = [r["Table"] for r in debug_results if "Error" in r["Status"] or "failed" in r["Status"]]
+    empty_tables = [r["Tabela"] for r in debug_results if r["Quantidade de Linhas"] == 0]
+    error_tables = [r["Tabela"] for r in debug_results if "Erro" in r["Status"] or "falhou" in r["Status"]]
     
     if empty_tables:
-        st.warning(f"⚠️ Empty tables: {', '.join(empty_tables)}")
+        st.warning(f"⚠️ Tabelas vazias: {', '.join(empty_tables)}")
     if error_tables:
-        st.error(f"❌ Tables with errors: {', '.join(error_tables)}")
+        st.error(f"❌ Tabelas com erros: {', '.join(error_tables)}")
     
     if not empty_tables and not error_tables:
-        st.success("✅ All investment tables have data!")
+        st.success("✅ Todas as tabelas de investimentos têm dados!")
 
 # Check if we have data
 dates_check = get_dates()
 if dates_check.empty:
-    st.error("❌ No investment data found in the database.")
-    st.info("Please ensure investment data has been loaded into the local database.")
-    st.info("💡 Check the 'Database Debug Information' section above to see which tables need data.")
+    st.error("❌ Nenhum dado de investimento encontrado no banco de dados.")
+    st.info("Certifique-se de que os dados de investimentos foram carregados no banco de dados local.")
+    st.info("💡 Verifique a seção 'Informações de Debug do Banco de Dados' acima para ver quais tabelas precisam de dados.")
     st.stop()
 
 # Get total portfolio value for forecast
@@ -610,16 +598,13 @@ last_state = get_last_state()
 current_balance = last_state['value'].sum() if not last_state.empty else 0
 
 # Main dashboard sections
-plot_last_results()
-
-st.markdown("---")
 plot_summary()
 
 st.markdown("---")
 if current_balance > 0:
     plot_forecast(current_balance)
 else:
-    st.warning("⚠️ Cannot display forecast: No current portfolio balance found.")
+    st.warning("⚠️ Não é possível exibir a projeção: Nenhum saldo atual da carteira encontrado.")
 
 st.markdown("---")
 plot_history() 

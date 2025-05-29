@@ -60,14 +60,14 @@ def main():
     except Exception as e:
         print(f"Error during investments data processing: {e}")
 
-    # # Step 4: Process and load spending data
-    # print("\n--- Step 4: Processing spending data ---")
-    # try:
-    #     print("Calling spending processing logic...")
-    #     process_all_spending(target_db="local")
-    #     print("Spending data processing completed.")
-    # except Exception as e:
-    #     print(f"Error during spending data processing: {e}")
+    # Step 4: Process and load spending data
+    print("\n--- Step 4: Processing spending data ---")
+    try:
+        print("Calling spending processing logic...")
+        process_all_spending(target_db="local")
+        print("Spending data processing completed.")
+    except Exception as e:
+        print(f"Error during spending data processing: {e}")
 
     print("\n===========================================")
     print("  CAJUBILLS PROJECT INITIALIZATION FINISHED  ")
