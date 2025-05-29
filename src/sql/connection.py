@@ -49,13 +49,34 @@ def db_connect(target_db: str = "local"):
         password = "Nk7f4mJr6?A"
         database = "finance"
 
-        conn = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=database
-        )
-        return conn
+        try:
+            conn = mysql.connector.connect(
+                host=host,
+                port=3306,
+                user=user,
+                password=password,
+                database=database,
+                
+                # RDS Best Practices
+                ssl_disabled=False,           # Enable SSL for security
+                connection_timeout=30,        # 30 second timeout
+                autocommit=True,             # Auto-commit for consistency
+                charset='utf8mb4',           # Proper UTF-8 support
+                
+                # Optional: Connection pooling (good for production)
+                # pool_name='rds_pool',
+                # pool_size=3,
+                # pool_reset_session=True
+            )
+            print("✅ Successfully connected to RDS MySQL database")
+            return conn
+            
+        except mysql.connector.Error as e:
+            print(f"❌ MySQL Error connecting to RDS: {e}")
+            raise
+        except Exception as e:
+            print(f"❌ Unexpected error connecting to RDS: {e}")
+            raise
     else:
         raise ValueError("Invalid target_db specified. Choose 'local' or 'remote'.")
 

@@ -18,14 +18,14 @@ def _prepare_date_dimension_and_nu_prices(cursor):
     print(f"Inserting {len(NU_PRICES)} NU price records into asset_price...")
     cursor.executemany(
         """
-        INSERT IGNORE INTO asset_price(ticker, quote_date, open_price, close_price)
-        VALUES(%s, %s, %s, %s)
+        INSERT OR IGNORE INTO asset_price(ticker, quote_date, open_price, close_price)
+        VALUES(?, ?, ?, ?)
         """, NU_PRICES)
     print(f"Processed {cursor.rowcount if cursor.rowcount != -1 else len(NU_PRICES)} NU price records.")
 
     print(f"Inserting {len(date_list)} records into 'dates' table...")
     cursor.executemany(
-        "INSERT IGNORE INTO dates(date) VALUES(%s)",
+        "INSERT OR IGNORE INTO dates(date) VALUES(?)",
         date_list
     )
     print(f"Processed {cursor.rowcount if cursor.rowcount != -1 else len(date_list)} records for 'dates' table.")
@@ -37,7 +37,7 @@ def _populate_daily_asset_price(cursor):
     print("Populating daily_asset_price...")
     cursor.execute(
         """
-        INSERT IGNORE INTO daily_asset_price(ticker, date, price)
+        INSERT OR IGNORE INTO daily_asset_price(ticker, date, price)
         WITH date_range AS
         (
             SELECT
@@ -91,10 +91,10 @@ def _populate_variable_income_daily_balance(cursor):
                 p.ticker,
                 p.date,
                 p.price,
-                dolar_price,
+                d.dolar_price,
                 c.currency, 
-                amount as amount_change,
-                SUM(amount) OVER(PARTITION BY ticker ORDER BY p.date) AS amount
+                o.amount as amount_change,
+                SUM(COALESCE(o.amount, 0)) OVER(PARTITION BY p.ticker ORDER BY p.date) AS amount
             FROM daily_asset_price p
             LEFT JOIN operation o
             ON p.ticker = o.ticker AND p.date = o.operation_date
@@ -104,16 +104,16 @@ def _populate_variable_income_daily_balance(cursor):
             ON c.ticker = p.ticker 
         )
         SELECT
-            ticker,
-            date,
-            price,
-            dolar_price,
-            currency,
-            amount_change,
-            amount,
-            CASE WHEN currency = "dolar" THEN (price * dolar_price) * amount ELSE price * amount END as value
-        FROM balance
-        WHERE amount <> 0;
+            b.ticker,
+            b.date,
+            b.price,
+            b.dolar_price,
+            b.currency,
+            b.amount_change,
+            b.amount,
+            CASE WHEN b.currency = "dolar" THEN (b.price * b.dolar_price) * b.amount ELSE b.price * b.amount END as value
+        FROM balance b
+        WHERE b.amount <> 0;
         """
     )
     print(f"Populated variable_income_daily_balance. Rows affected: {cursor.rowcount}")
@@ -265,7 +265,7 @@ def _process_tesouro_selic_operations(cursor):
         cursor.executemany(
             """
             INSERT INTO fixed_income_daily_balance(asset, due_date, date, tax_rate, deposit_value, gross_value, tax_value, net_value)
-            VALUES(%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
             """,
             compound_values
         )
@@ -282,11 +282,11 @@ def _populate_fgts_daily_balance(cursor):
     cursor.execute("""
     INSERT INTO fgts_daily_balance
     WITH fgts_by_company AS(
-        SELECT YEAR(date) as 'year', MONTH(date) as 'month', company, max(balance) as balance
+        SELECT strftime('%Y', date) as year, strftime('%m', date) as month, company, max(balance) as balance
         FROM fgts_operations    
-        GROUP BY YEAR(date), MONTH(date), company
+        GROUP BY strftime('%Y', date), strftime('%m', date), company
      ), fgts_by_date AS (
-        SELECT STR_TO_DATE(CONCAT(year, '-', LPAD(month, 2, '0'), '-01'), '%Y-%m-%d') AS date, sum(balance) as balance, count(*) as companies
+        SELECT date(year || '-' || printf('%02d', month) || '-01') AS date, sum(balance) as balance, count(*) as companies
         FROM fgts_by_company    
         GROUP BY date
         HAVING count(*) > 1
@@ -376,9 +376,9 @@ def _populate_financial_returns(cursor):
     INSERT INTO financial_returns
     WITH deposits AS
     (
-        SELECT asset, YEAR(operation_date) AS year, MONTH(operation_date) AS month, sum(value) deposit
+        SELECT asset, CAST(strftime('%Y', operation_date) AS INTEGER) AS year, CAST(strftime('%m', operation_date) AS INTEGER) AS month, sum(value) deposit
         FROM operations
-        GROUP BY asset, YEAR(operation_date), MONTH(operation_date)
+        GROUP BY asset, strftime('%Y', operation_date), strftime('%m', operation_date)
     ),
     balance_by_asset AS (
         SELECT asset, date, SUM(value) as value
@@ -387,35 +387,35 @@ def _populate_financial_returns(cursor):
     ),
     balance AS (
         SELECT asset, date, value, lag(value) OVER (PARTITION BY asset ORDER by date) as lag_value, lag(date) OVER (PARTITION BY asset ORDER by date) AS lag_date,
-        ROW_NUMBER () OVER (PARTITION BY asset, YEAR(date), MONTH(date) ORDER BY date) as r
+        ROW_NUMBER () OVER (PARTITION BY asset, strftime('%Y', date), strftime('%m', date) ORDER BY date) as r
         FROM balance_by_asset
     ),
     summary AS (
         SELECT
             b.asset,
-            year(b.date) as year,
-            month(b.date) as month,
-            value,
-            COALESCE (lag_value, 0) as lag_value,
-            lead(lag_value) OVER (PARTITION BY asset ORDER BY b.date) as next_value,
-            COALESCE (deposit, 0) AS deposit
+            CAST(strftime('%Y', b.date) AS INTEGER) as year,
+            CAST(strftime('%m', b.date) AS INTEGER) as month,
+            b.value,
+            COALESCE (b.lag_value, 0) as lag_value,
+            lead(b.lag_value) OVER (PARTITION BY b.asset ORDER BY b.date) as next_value,
+            COALESCE (d.deposit, 0) AS deposit
         FROM balance b
         LEFT JOIN deposits d
-        ON d.year = YEAR(date)
-        AND d.month = MONTH(date)
+        ON d.year = CAST(strftime('%Y', b.date) AS INTEGER)
+        AND d.month = CAST(strftime('%m', b.date) AS INTEGER)
         AND d.asset = b.asset
-        WHERE r = 1
+        WHERE b.r = 1
     )
-    SELECT asset, year, month,
-        lag_value as month_start_value,
-        next_value as month_end_value,
-        deposit,
-        next_value - lag_value as net_increase, 
-        next_value - lag_value - deposit as profit,
-        (next_value - lag_value - deposit) / lag_value * 100 as relative_return
-    FROM summary
-    WHERE next_value IS NOT NULL 
-    ORDER by year DESC, month DESC
+    SELECT s.asset, s.year, s.month,
+        s.lag_value as month_start_value,
+        s.next_value as month_end_value,
+        s.deposit,
+        s.next_value - s.lag_value as net_increase, 
+        s.next_value - s.lag_value - s.deposit as profit,
+        (s.next_value - s.lag_value - s.deposit) / s.lag_value * 100 as relative_return
+    FROM summary s
+    WHERE s.next_value IS NOT NULL 
+    ORDER by s.year DESC, s.month DESC
 """)
     print(f"Populated financial_returns. Rows affected: {cursor.rowcount}")
 
@@ -435,7 +435,7 @@ def _populate_summary_returns(cursor):
             SUM(profit) AS total_profit,
             SUM(profit) / SUM(month_start_value) * 100 as total_return
         FROM financial_returns
-        GROUP BY YEAR, MONTH
+        GROUP BY year, month
     )
     SELECT
         year, 

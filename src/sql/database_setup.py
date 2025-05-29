@@ -213,7 +213,10 @@ def _get_ddl_statements_from_string(ddl_string):
     return cleaned_statements
 
 def create_tables_from_ddl(target_db_arg="local"):
-    """Creates tables in the specified database using embedded DDL statements."""
+    """Creates tables in the specified database using embedded DDL statements.
+    
+    Special handling: Preserves asset_price table data by skipping DROP statements for this table.
+    """
     if not db_connect:
         print("Error: db_connect function not available. Cannot create tables.")
         return False
@@ -234,7 +237,24 @@ def create_tables_from_ddl(target_db_arg="local"):
 
         print(f"Found {len(sql_statements)} SQL statements to execute for table creation.")
 
+        preserved_tables = ['asset_price']  # Tables to preserve data for
+        skipped_drops = []
+
         for stmt_index, sql in enumerate(sql_statements):
+            sql_lower = sql.lower().strip()
+            
+            # Check if this is a DROP statement for a preserved table
+            skip_statement = False
+            for preserved_table in preserved_tables:
+                if (sql_lower.startswith("drop table if exists") or sql_lower.startswith("drop table")) and preserved_table in sql_lower:
+                    print(f"⚠️  SKIPPING DROP for preserved table '{preserved_table}': {sql[:60]}...")
+                    skipped_drops.append(preserved_table)
+                    skip_statement = True
+                    break
+            
+            if skip_statement:
+                continue
+                
             print(f"Executing DDL statement {stmt_index + 1}/{len(sql_statements)}: {sql[:100]}{'...' if len(sql) > 100 else ''}")
             try:
                 cursor.execute(sql)
@@ -249,6 +269,10 @@ def create_tables_from_ddl(target_db_arg="local"):
                 else:
                     print(f"  Error executing DDL statement: {sql}")
                     print(f"  Database error: {e}")
+        
+        # Summary of preserved tables
+        if skipped_drops:
+            print(f"\n✅ Preserved data in tables: {', '.join(skipped_drops)}")
         
         print("\nTable creation DDL execution completed.")
         return True

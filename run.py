@@ -31,15 +31,16 @@ def main():
 
     # Step 1: Reset the local database
     print("\n--- Step 1: Resetting local database ---")
-    if reset_local_database():
-        print("Local database reset successfully.")
-    else:
-        print("Failed to reset local database. Aborting.")
-        return
+    print("Skipping database reset.")
+    # if reset_local_database():
+    #     print("Local database reset successfully.")
+    # else:
+    #     print("Failed to reset local database. Aborting.")
+    #     return
 
     # Step 2: Create tables in the local database
     print("\n--- Step 2: Creating database tables ---")
-    # The create_tables_from_ddl function defaults to "local"
+    # # The create_tables_from_ddl function defaults to "local"
     if create_tables_from_ddl(): 
         print("Database tables created successfully.")
     else:
@@ -59,14 +60,14 @@ def main():
     except Exception as e:
         print(f"Error during investments data processing: {e}")
 
-    # Step 4: Process and load spending data
-    print("\n--- Step 4: Processing spending data ---")
-    try:
-        print("Calling spending processing logic...")
-        process_all_spending(target_db="local")
-        print("Spending data processing completed.")
-    except Exception as e:
-        print(f"Error during spending data processing: {e}")
+    # # Step 4: Process and load spending data
+    # print("\n--- Step 4: Processing spending data ---")
+    # try:
+    #     print("Calling spending processing logic...")
+    #     process_all_spending(target_db="local")
+    #     print("Spending data processing completed.")
+    # except Exception as e:
+    #     print(f"Error during spending data processing: {e}")
 
     print("\n===========================================")
     print("  CAJUBILLS PROJECT INITIALIZATION FINISHED  ")
