@@ -14,6 +14,85 @@ if src_path not in sys.path:
 from backend.investments.constants import EQUITY_TARGET, FIXED_INCOME_TARGET, BIRTH_DATE
 from sql.connection import run_query
 
+# Path for target percentages CSV file
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, '..', '..', '..'))
+TARGET_PERCENTAGES_FILE = os.path.join(project_root, 'resources', 'target_percentages.csv')
+
+def safe_percentage_to_float(value):
+    """Safely convert percentage value to float, handling strings with % symbols"""
+    if value is None:
+        return 0.0
+    
+    if isinstance(value, (int, float)):
+        return float(value)
+    
+    if isinstance(value, str):
+        # Remove % symbol if present and convert to float
+        cleaned_value = value.strip().rstrip('%')
+        try:
+            return float(cleaned_value)
+        except ValueError:
+            return 0.0
+    
+    return 0.0
+
+def load_target_percentages():
+    """Load target percentages from CSV file"""
+    if os.path.exists(TARGET_PERCENTAGES_FILE):
+        try:
+            df = pd.read_csv(TARGET_PERCENTAGES_FILE)
+            # Check if the file is empty or has no columns
+            if df.empty or len(df.columns) == 0:
+                return {}
+            
+            # Check if required columns exist
+            if 'asset' not in df.columns or 'target_percentage' not in df.columns:
+                st.warning("Arquivo de metas de percentuais tem formato inválido. Criando novo arquivo.")
+                return {}
+            
+            # Convert to dictionary for easy lookup
+            target_dict = {}
+            for _, row in df.iterrows():
+                target_dict[row['asset']] = safe_percentage_to_float(row['target_percentage'])
+            return target_dict
+        except (pd.errors.EmptyDataError, pd.errors.ParserError):
+            # File exists but is empty or corrupted
+            st.info("Arquivo de metas de percentuais está vazio. Será criado quando você salvar suas metas.")
+            return {}
+        except Exception as e:
+            st.warning(f"Erro ao carregar metas de percentuais: {e}")
+            return {}
+    return {}
+
+def save_target_percentages(target_dict):
+    """Save target percentages to CSV file"""
+    try:
+        # Convert dictionary to DataFrame
+        if target_dict:
+            data = [{'asset': asset, 'target_percentage': percentage} 
+                    for asset, percentage in target_dict.items()]
+            df = pd.DataFrame(data)
+        else:
+            # Create empty DataFrame with proper columns
+            df = pd.DataFrame(columns=['asset', 'target_percentage'])
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(TARGET_PERCENTAGES_FILE), exist_ok=True)
+        
+        # Save to CSV
+        df.to_csv(TARGET_PERCENTAGES_FILE, index=False)
+        
+        if target_dict:
+            st.toast("Metas de percentuais salvas com sucesso!", icon="✅")
+        else:
+            st.toast("Metas resetadas com sucesso!", icon="🔄")
+        return True
+    except Exception as e:
+        st.error(f"Erro ao salvar metas de percentuais: {e}")
+        st.toast("Falha ao salvar as metas.", icon="❌")
+        return False
+
 def get_daily_balance(start_date, end_date):
     query = (f"SELECT date, sum(value) as value "
              f"FROM daily_balance "
@@ -282,7 +361,14 @@ def plot_summary():
     if aporte_input > 0:
         st.info(f"Sugestões de rebalanceamento baseadas em contribuição mensal de R$ {aporte_input:,.2f}:")
     
-    # Prepare display data
+    # Load user-defined target percentages
+    user_target_percentages = load_target_percentages()
+    
+    # Initialize session state for target percentages if not exists
+    if 'target_percentages_dict' not in st.session_state:
+        st.session_state.target_percentages_dict = user_target_percentages.copy()
+    
+    # Prepare display data with editable target percentages
     display_data = []
     
     for _, row in df.iterrows():
@@ -294,28 +380,110 @@ def plot_summary():
         diff_ratio = row['diff_ratio']
         asset_type = row['type']
         
-        # Convert to float to handle any string values
-        try:
-            expected_percentage_float = float(expected_percentage) if expected_percentage is not None else 0.0
-            actual_percentage_float = float(actual_percentage) if actual_percentage is not None else 0.0
-        except (ValueError, TypeError):
-            expected_percentage_float = 0.0
-            actual_percentage_float = 0.0
+        # Use user-defined target percentage if available, otherwise use database value
+        if asset in st.session_state.target_percentages_dict:
+            target_percentage_to_use = st.session_state.target_percentages_dict[asset]
+        else:
+            target_percentage_to_use = safe_percentage_to_float(expected_percentage)
         
-        suggested_aport = diff_ratio * aporte_input if aporte_input > 0 else 0
+        # Convert actual percentage to float
+        actual_percentage_float = safe_percentage_to_float(actual_percentage)
+        
+        # Recalculate difference and ratio based on potentially updated target
+        if total_sum > 0:
+            target_value = (target_percentage_to_use * total_sum) / 100.0
+            new_absolute_diff = target_value - value
+            # Recalculate diff_ratio based on positive differences
+            positive_diff_total = sum(max(0, (st.session_state.target_percentages_dict.get(r['asset'], 
+                                         safe_percentage_to_float(r['expected_percentage'])) * total_sum / 100.0) - r['value'])
+                                    for _, r in df.iterrows())
+            new_diff_ratio = (new_absolute_diff / positive_diff_total) if positive_diff_total > 0 and new_absolute_diff > 0 else 0
+        else:
+            new_absolute_diff = 0
+            new_diff_ratio = 0
+        
+        suggested_aport = new_diff_ratio * aporte_input if aporte_input > 0 else 0
         
         display_data.append({
             'Ativo': asset,
             'Tipo': '🏦 Renda Fixa' if asset_type == 'fixed_income' else '📈 Renda Variável',
             'Valor Atual': format_currency(value, 'R$'),
-            'Meta %': f"{expected_percentage_float:.1f}%",
+            'Meta %': target_percentage_to_use,
             'Atual %': f"{actual_percentage_float:.1f}%",
-            'Diferença': format_currency(absolute_diff, 'R$'),
+            'Diferença': format_currency(new_absolute_diff, 'R$'),
             'Alocação Sugerida': format_currency(suggested_aport, 'R$') if aporte_input > 0 else '-'
         })
     
     df_display = pd.DataFrame(display_data)
-    st.dataframe(df_display, hide_index=True, use_container_width=True)
+    
+    # Configure editable data editor
+    column_config = {
+        'Ativo': st.column_config.TextColumn('Ativo', disabled=True),
+        'Tipo': st.column_config.TextColumn('Tipo', disabled=True),
+        'Valor Atual': st.column_config.TextColumn('Valor Atual', disabled=True),
+        'Meta %': st.column_config.NumberColumn(
+            'Meta %',
+            min_value=0.0,
+            max_value=100.0,
+            step=0.1,
+            format="%.1f"
+        ),
+        'Atual %': st.column_config.TextColumn('Atual %', disabled=True),
+        'Diferença': st.column_config.TextColumn('Diferença', disabled=True),
+        'Alocação Sugerida': st.column_config.TextColumn('Alocação Sugerida', disabled=True)
+    }
+    
+    # Display editable table
+    edited_df = st.data_editor(
+        df_display,
+        column_config=column_config,
+        hide_index=True,
+        use_container_width=True,
+        key="allocation_editor"
+    )
+    
+    # Calculate and display total percentage
+    total_meta_percentage = sum(row['Meta %'] for row in display_data)
+    
+    # Color coding for the total
+    if abs(total_meta_percentage - 100.0) < 0.1:  # Close to 100%
+        total_color = "🟢"
+        total_status = "Perfeito!"
+    elif total_meta_percentage > 100.0:
+        total_color = "🔴"
+        total_status = "Acima de 100%"
+    else:
+        total_color = "🟡"
+        total_status = "Abaixo de 100%"
+    
+    st.markdown(f"**{total_color} Total das Metas: {total_meta_percentage:.1f}%** ({total_status})")
+    
+    # Process changes from data editor
+    if "allocation_editor" in st.session_state and "edited_rows" in st.session_state["allocation_editor"]:
+        edited_rows = st.session_state["allocation_editor"]["edited_rows"]
+        
+        if edited_rows:
+            # Update session state with changes
+            for row_idx_str, changes in edited_rows.items():
+                row_idx = int(row_idx_str)
+                if "Meta %" in changes:
+                    asset_name = df_display.iloc[row_idx]['Ativo']
+                    new_target = float(changes["Meta %"])
+                    st.session_state.target_percentages_dict[asset_name] = new_target
+    
+    # Save button
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("💾 Salvar Metas", key="save_targets_btn"):
+            if save_target_percentages(st.session_state.target_percentages_dict):
+                st.rerun()
+    
+    with col2:
+        if st.button("🔄 Resetar para Padrão", key="reset_targets_btn"):
+            # Clear user-defined targets
+            st.session_state.target_percentages_dict = {}
+            if save_target_percentages({}):
+                st.rerun()
 
 def plot_history():
     st.header("📊 Performance Histórica")
