@@ -1,4 +1,4 @@
-yfinance==0.2.20
+yfinance==0.2.37
 mysql-connector-python==8.1.0
 gspread
 oauth2client
