@@ -121,6 +121,74 @@ def get_dates():
     query = "SELECT MIN(date) AS start_date, MAX(date) AS end_date FROM daily_balance;"
     return run_query(query, target_db="local")
 
+def get_financial_independence_data(start_date=None, end_date=None):
+    """Get data for financial independence analysis"""
+    # Build date filter conditions
+    portfolio_date_filter = ""
+    expenses_date_filter = ""
+    
+    if start_date and end_date:
+        portfolio_date_filter = f"AND date BETWEEN '{start_date}' AND '{end_date}'"
+        expenses_date_filter = f"AND date BETWEEN '{start_date}' AND '{end_date}'"
+    
+    # Get monthly portfolio values (last day of each month)
+    portfolio_query = f"""
+        SELECT 
+            year_month,
+            date,
+            portfolio_value
+        FROM (
+            SELECT 
+                strftime('%Y-%m', date) as year_month,
+                date,
+                SUM(value) as portfolio_value,
+                ROW_NUMBER() OVER (
+                    PARTITION BY strftime('%Y-%m', date) 
+                    ORDER BY date DESC
+                ) as rn
+            FROM daily_balance
+            WHERE 1=1 {portfolio_date_filter}
+            GROUP BY date
+        ) 
+        WHERE rn = 1
+        ORDER BY date DESC
+    """
+    
+    portfolio_data = run_query(portfolio_query, target_db="local")
+    
+    # Get monthly expenses from transactions
+    expenses_query = f"""
+        SELECT 
+            strftime('%Y-%m', date) as year_month,
+            ABS(SUM(amount)) as monthly_expenses
+        FROM ofx_transactions 
+        WHERE amount < 0 
+        AND main_category NOT IN ('Ignorar', 'Investimentos', 'Extraordinários')
+        {expenses_date_filter}
+        GROUP BY strftime('%Y-%m', date)
+        ORDER BY year_month DESC
+    """
+    
+    expenses_data = run_query(expenses_query, target_db="local")
+    
+    # Merge data and calculate metrics
+    if not portfolio_data.empty and not expenses_data.empty:
+        # Merge on year_month
+        merged_data = portfolio_data.merge(expenses_data, on='year_month', how='inner')
+        
+        # Calculate passive income (4% rule divided by 12 months)
+        merged_data['passive_income'] = (merged_data['portfolio_value'] * 0.04) / 12
+        
+        # Calculate independence percentage
+        merged_data['independence_percentage'] = (merged_data['passive_income'] / merged_data['monthly_expenses']) * 100
+        
+        # Convert year_month to datetime for plotting
+        merged_data['date'] = pd.to_datetime(merged_data['year_month'] + '-01')
+        
+        return merged_data.sort_values('date')
+    
+    return pd.DataFrame()
+
 def get_summary_returns(start_date, end_date):
     # Adjusted for SQLite - using the actual year and month columns from the table
     query = ("SELECT (year || '-' || printf('%02d', month)) AS 'year_month', total_deposit, total_profit, "
@@ -281,12 +349,14 @@ def plot_summary():
     # Get 6-month averages
     six_months_query = ("""
         SELECT 
-            AVG(moving_avg_deposit_6) as avg_deposit_6m,
-            AVG(moving_avg_profit_6) as avg_profit_6m
-        FROM summary_returns 
-        WHERE moving_avg_deposit_6 IS NOT NULL AND moving_avg_profit_6 IS NOT NULL
-        ORDER BY year DESC, month DESC
-        LIMIT 6
+            AVG(total_deposit) as avg_deposit_6m,
+            AVG(total_profit) as avg_profit_6m
+        FROM (
+            SELECT total_deposit, total_profit
+            FROM summary_returns 
+            ORDER BY year DESC, month DESC
+            LIMIT 6
+        ) AS last_six_months
     """)
     
     six_months_data = run_query(six_months_query, target_db="local")
@@ -485,30 +555,107 @@ def plot_summary():
             if save_target_percentages({}):
                 st.rerun()
 
-def plot_history():
+def plot_financial_independence(start_date, end_date):
+    st.header("🎯 Independência Financeira")
+    
+    # Get financial independence data with date filters
+    fi_data = get_financial_independence_data(start_date, end_date)
+    
+    if fi_data.empty:
+        st.warning("Não há dados suficientes para o período selecionado.")
+        st.info("Tente expandir o período ou verificar se há dados de carteira e transações disponíveis.")
+        return
+    
+    # Calculate current independence percentage (from latest available data)
+    latest_data = fi_data.iloc[-1]
+    current_independence = latest_data['independence_percentage']
+    current_passive_income = latest_data['passive_income']
+    current_expenses = latest_data['monthly_expenses']
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        # Create the chart with passive income and expenses
+        fig_fi = px.bar(
+            fi_data,
+            x='date',
+            y=['passive_income', 'monthly_expenses'],
+            title='📊 Renda Passiva vs Gastos Mensais',
+            labels={
+                'value': 'Valor (R$)',
+                'date': 'Mês',
+                'variable': 'Tipo'
+            },
+            color_discrete_map={
+                'passive_income': '#10B981',    # Modern emerald green
+                'monthly_expenses': '#F59E0B'   # Vibrant amber orange
+            }
+        )
+        
+        # Update layout
+        fig_fi.update_layout(
+            xaxis_title='Mês',
+            yaxis_title='Valor (R$)',
+            legend_title='Legenda',
+            barmode='group'
+        )
+        
+        # Update legend labels
+        fig_fi.for_each_trace(lambda t: t.update(
+            name='Renda Passiva (4%)' if t.name == 'passive_income' else 'Gastos Mensais'
+        ))
+        
+        st.plotly_chart(fig_fi, use_container_width=True)
+    
+    with col2:
+        st.subheader("📈 Status da Independência")
+        
+        # Current independence percentage
+        if current_independence >= 100:
+            independence_color = "🟢"
+            independence_status = "Independência Atingida!"
+        elif current_independence >= 75:
+            independence_color = "🟡"
+            independence_status = "Quase Lá!"
+        elif current_independence >= 50:
+            independence_color = "🟠"
+            independence_status = "No Caminho Certo"
+        else:
+            independence_color = "🔴"
+            independence_status = "Início da Jornada"
+        
+        st.metric(
+            label=f"{independence_color} Independência Financeira",
+            value=f"{current_independence:.1f}%",
+            help=independence_status
+        )
+        
+        st.metric(
+            label="💰 Renda Passiva Atual",
+            value=format_currency(current_passive_income, 'R$'),
+            help="Baseado na regra dos 4% (anual dividido por 12)"
+        )
+        
+        st.metric(
+            label="💸 Gastos Mensais",
+            value=format_currency(current_expenses, 'R$'),
+            help="Gastos médios do último mês (excluindo investimentos)"
+        )
+        
+        # Progress bar
+        progress_value = min(current_independence / 100, 1.0)
+        st.progress(progress_value)
+        
+        if current_independence < 100:
+            deficit = current_expenses - current_passive_income
+            st.caption(f"💡 Faltam R$ {deficit:,.2f}/mês para independência")
+        else:
+            surplus = current_passive_income - current_expenses
+            st.caption(f"🎉 Superávit de R$ {surplus:,.2f}/mês!")
+
+def plot_history(start_date, end_date):
     st.header("📊 Performance Histórica")
     
-    dates = get_dates()
-    if dates.empty:
-        st.warning("Nenhum dado histórico disponível.")
-        return
-
-    # Date selection in sidebar
-    with st.sidebar:
-        st.header("📅 Período do Histórico")
-        max_date = pd.to_datetime(dates['end_date'].iloc[0])
-        min_date = pd.to_datetime(dates['start_date'].iloc[0])
-        default_start = max_date - pd.DateOffset(years=2)
-        if default_start < min_date:
-            default_start = min_date
-        
-        start_date = st.date_input('Data Inicial', value=default_start.date(), min_value=min_date.date(), max_value=max_date.date())
-        end_date = st.date_input('Data Final', value=max_date.date(), min_value=min_date.date(), max_value=max_date.date())
-
-    if start_date > end_date:
-        st.error("A data final deve ser posterior à data inicial.")
-        return
-
     # Load historical data
     daily_balance = get_daily_balance(start_date, end_date)
     daily_balance_by_asset = get_daily_balance_by_asset(start_date, end_date)
@@ -612,10 +759,10 @@ def plot_history():
         # Moving averages
         fig_ma_returns_deposits = px.line(monthly_returns,
                                          x='year_month',
-                                         y=['moving_avg_profit_12', 'moving_avg_deposit_12'],
+                                         y=['moving_avg_profit_6', 'moving_avg_deposit_6'],
                                          labels={'value': 'Valor (R$)', 'year_month': 'Ano-Mês'},
-                                         title='📈 Médias Móveis de 12 Meses: Retornos e Depósitos',
-                                         color_discrete_map={'moving_avg_profit_12': '#1f77b4', 'moving_avg_deposit_12': '#d62728'})
+                                         title='📈 Médias Móveis de 6 Meses: Retornos e Depósitos',
+                                         color_discrete_map={'moving_avg_profit_6': '#1f77b4', 'moving_avg_deposit_6': '#d62728'})
         st.plotly_chart(fig_ma_returns_deposits, use_container_width=True)
 
         # Returns by asset
@@ -672,93 +819,27 @@ def plot_history():
 st.set_page_config(page_title="Painel de Investimentos", page_icon="💰", layout="wide")
 st.title("Painel de Investimentos")
 
-# Database debugging section
-with st.expander("🔍 Informações de Debug do Banco de Dados", expanded=False):
-    st.subheader("Status das Tabelas de Investimentos")
-    
-    tables_to_check = [
-        "daily_balance",
-        "summary_returns", 
-        "financial_returns",
-        "target_percentage",
-        "variable_income_daily_balance",
-        "fixed_income_daily_balance", 
-        "variable_income_operations",
-        "fixed_income_operations",
-        "asset_price",
-        "daily_asset_price",
-        "index_series"
-    ]
-    
-    debug_results = []
-    
-    for table in tables_to_check:
-        try:
-            # Check if table exists and count rows
-            count_query = f"SELECT COUNT(*) as row_count FROM {table}"
-            result = run_query(count_query, target_db="local")
-            
-            if not result.empty:
-                row_count = result['row_count'].iloc[0]
-                status = "✅ Tem dados" if row_count > 0 else "⚠️ Vazia"
-                
-                # Get date range for time-series tables
-                date_info = ""
-                if table in ["daily_balance", "variable_income_daily_balance", "fixed_income_daily_balance", "asset_price", "daily_asset_price", "index_series"]:
-                    try:
-                        date_query = f"SELECT MIN(date) as min_date, MAX(date) as max_date FROM {table}"
-                        date_result = run_query(date_query, target_db="local")
-                        if not date_result.empty and row_count > 0:
-                            min_date = date_result['min_date'].iloc[0]
-                            max_date = date_result['max_date'].iloc[0]
-                            date_info = f" | {min_date} até {max_date}"
-                    except:
-                        date_info = " | Período de datas indisponível"
-                        
-                debug_results.append({
-                    "Tabela": table,
-                    "Status": status,
-                    "Quantidade de Linhas": row_count,
-                    "Informações Adicionais": date_info
-                })
-            else:
-                debug_results.append({
-                    "Tabela": table,
-                    "Status": "❌ Query falhou",
-                    "Quantidade de Linhas": 0,
-                    "Informações Adicionais": ""
-                })
-                
-        except Exception as e:
-            debug_results.append({
-                "Tabela": table,
-                "Status": "❌ Erro",
-                "Quantidade de Linhas": 0,
-                "Informações Adicionais": str(e)
-            })
-    
-    # Display results
-    debug_df = pd.DataFrame(debug_results)
-    st.dataframe(debug_df, hide_index=True, use_container_width=True)
-    
-    # Summary
-    empty_tables = [r["Tabela"] for r in debug_results if r["Quantidade de Linhas"] == 0]
-    error_tables = [r["Tabela"] for r in debug_results if "Erro" in r["Status"] or "falhou" in r["Status"]]
-    
-    if empty_tables:
-        st.warning(f"⚠️ Tabelas vazias: {', '.join(empty_tables)}")
-    if error_tables:
-        st.error(f"❌ Tabelas com erros: {', '.join(error_tables)}")
-    
-    if not empty_tables and not error_tables:
-        st.success("✅ Todas as tabelas de investimentos têm dados!")
-
 # Check if we have data
 dates_check = get_dates()
 if dates_check.empty:
     st.error("❌ Nenhum dado de investimento encontrado no banco de dados.")
     st.info("Certifique-se de que os dados de investimentos foram carregados no banco de dados local.")
-    st.info("💡 Verifique a seção 'Informações de Debug do Banco de Dados' acima para ver quais tabelas precisam de dados.")
+    st.stop()
+
+# Get date controls for the entire page in sidebar
+with st.sidebar:
+    st.header("📅 Período do Histórico")
+    max_date = pd.to_datetime(dates_check['end_date'].iloc[0])
+    min_date = pd.to_datetime(dates_check['start_date'].iloc[0])
+    default_start = max_date - pd.DateOffset(years=2)
+    if default_start < min_date:
+        default_start = min_date
+    
+    start_date = st.date_input('Data Inicial', value=default_start.date(), min_value=min_date.date(), max_value=max_date.date())
+    end_date = st.date_input('Data Final', value=max_date.date(), min_value=min_date.date(), max_value=max_date.date())
+
+if start_date > end_date:
+    st.error("A data final deve ser posterior à data inicial.")
     st.stop()
 
 # Get total portfolio value for forecast
@@ -769,10 +850,13 @@ current_balance = last_state['value'].sum() if not last_state.empty else 0
 plot_summary()
 
 st.markdown("---")
+plot_financial_independence(start_date, end_date)
+
+st.markdown("---")
 if current_balance > 0:
     plot_forecast(current_balance)
 else:
     st.warning("⚠️ Não é possível exibir a projeção: Nenhum saldo atual da carteira encontrado.")
 
 st.markdown("---")
-plot_history() 
+plot_history(start_date, end_date) 
