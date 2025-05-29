@@ -4,8 +4,8 @@ import os
 import pandas as pd
 from ofxparse import OfxParser
 
-from categorization_rules import CATEGORIZATION_RULES  # Import the rules
-from src.sql.connection import db_connect # Added for DB connection
+from .categorization_rules import CATEGORIZATION_RULES  # Import the rules
+from sql.connection import db_connect # Corrected import: removed 'src.'
 
 # Define column names for consistency (can be shared or defined where needed)
 COLUMN_ID = 'id'
@@ -126,44 +126,66 @@ def _parse_single_ofx_to_dataframe(file_path: str) -> pd.DataFrame:
     return df
 
 
-def parse_ofx_files_to_dataframe(resources_folder_path: str) -> pd.DataFrame:
+def parse_ofx_files_to_dataframe(base_resources_files_path: str) -> pd.DataFrame:
     """
-    Processes all OFX files directly within the given resources_folder_path,
+    Processes all OFX files from predefined subdirectories (account types)
+    within the given base_resources_files_path, adds 'account_type',
     and concatenates them into a single DataFrame.
     """
     all_dfs = []
+    # Define account type subdirectories and their corresponding names
+    account_type_subdirs = {
+        "credit_card": "Credit Card",
+        "nuconta": "Nuconta"
+        # Add more mappings here if needed
+    }
 
-    if not os.path.isdir(resources_folder_path):
-        print(f"Error: Resources directory not found: {resources_folder_path}")
-        # Return an empty DataFrame with expected columns if dir not found
-        # Adjust expected_columns if account_type or other global columns are anticipated
-        final_columns = [COLUMN_ID, COLUMN_DATE, COLUMN_TYPE, COLUMN_AMOUNT, COLUMN_MEMO]
-        return pd.DataFrame(columns=final_columns)
+    final_columns_expected = [COLUMN_ID, COLUMN_DATE, COLUMN_TYPE, COLUMN_AMOUNT, COLUMN_MEMO, COLUMN_ACCOUNT_TYPE]
 
-    ofx_files = glob.glob(os.path.join(resources_folder_path, '*.ofx'))
+    if not os.path.isdir(base_resources_files_path):
+        print(f"Error: Base OFX resources directory not found: {base_resources_files_path}")
+        return pd.DataFrame(columns=final_columns_expected)
 
-    if not ofx_files:
-        print(f"No OFX files found in {resources_folder_path}")
-    else:
-        print(f"Found {len(ofx_files)} OFX files in {resources_folder_path}. Processing...")
+    found_any_files = False
+    for subdir_name, account_type_name in account_type_subdirs.items():
+        current_path = os.path.join(base_resources_files_path, subdir_name)
+        if not os.path.isdir(current_path):
+            print(f"Warning: Subdirectory for account type '{account_type_name}' not found: {current_path}")
+            continue
 
-    for file_path in ofx_files:
-        print(f"Processing file: {file_path}")
-        df = _parse_single_ofx_to_dataframe(file_path)  # Changed to use the renamed internal function
-        if not df.empty:
-            # Placeholder for account_type if it needs to be derived from filename or other logic
-            # For example: if "credit_card" in file_path.lower(): df[COLUMN_ACCOUNT_TYPE] = "Credit Card"
-            all_dfs.append(df)
-        else:
-            print(f"Warning: No data parsed from {file_path}")
+        ofx_files = glob.glob(os.path.join(current_path, '*.ofx'))
+        if not ofx_files:
+            print(f"No OFX files found in {current_path} for account type '{account_type_name}'.")
+            continue
+        
+        found_any_files = True
+        print(f"Found {len(ofx_files)} OFX files in {current_path} for account type '{account_type_name}'. Processing...")
+        for file_path in ofx_files:
+            print(f"Processing file: {file_path}")
+            df = _parse_single_ofx_to_dataframe(file_path)
+            if not df.empty:
+                df[COLUMN_ACCOUNT_TYPE] = account_type_name # Add account type
+                all_dfs.append(df)
+            else:
+                print(f"Warning: No data parsed from {file_path}")
 
+    if not found_any_files:
+        print(f"No OFX files found in any of the specified subdirectories within {base_resources_files_path}")
+        # Return an empty DataFrame with all expected columns, including account_type
+        return pd.DataFrame(columns=final_columns_expected)
+        
     if not all_dfs:
-        print("No OFX files processed or no data found in any OFX file.")
-        final_columns = [COLUMN_ID, COLUMN_DATE, COLUMN_TYPE, COLUMN_AMOUNT, COLUMN_MEMO]
-        return pd.DataFrame(columns=final_columns)
+        print("No data parsed from any OFX file across all subdirectories.")
+        return pd.DataFrame(columns=final_columns_expected)
 
     combined_df = pd.concat(all_dfs, ignore_index=True)
-    print(f"Successfully combined {len(all_dfs)} OFX files into a DataFrame with shape {combined_df.shape}.")
+    # Ensure all expected columns are present, even if some files had no data for some specific new columns (though account_type is added to all non-empty dfs)
+    for col in final_columns_expected:
+        if col not in combined_df.columns:
+            combined_df[col] = pd.NA # Or appropriate default
+            
+    combined_df = combined_df[final_columns_expected] # Enforce column order and selection
+    print(f"Successfully combined OFX files from subdirectories into a DataFrame with shape {combined_df.shape}.")
     return combined_df
 
 
@@ -184,7 +206,7 @@ def _categorize_transactions_internal(df: pd.DataFrame, user_categories_file: st
     """
     Adds 'main_category' and 'sub_category' columns to the DataFrame.
     Prioritizes user-defined categories, then uses the global CATEGORIZATION_RULES.
-    This is an internal version of the categorize_transactions function.
+    This internal version now expects COLUMN_ACCOUNT_TYPE to potentially be present and usable.
     """
     if COLUMN_MEMO not in df.columns and COLUMN_ID not in df.columns:
         print(
@@ -231,44 +253,36 @@ def _categorize_transactions_internal(df: pd.DataFrame, user_categories_file: st
     return df
 
 
-def get_categorized_transactions(ofx_resources_path: str, user_categories_csv_path: str) -> pd.DataFrame:
+def get_categorized_transactions() -> pd.DataFrame: # Removed arguments as paths are now module-level constants
     """
-    Parses all OFX files from the given path, categorizes them, and returns a unified DataFrame.
+    Parses all OFX files from predefined subdirectories, adds account_type, 
+    categorizes them, and returns a unified DataFrame.
     """
-    print(f"Starting OFX processing and categorization from: {ofx_resources_path}")
-    raw_transactions_df = parse_ofx_files_to_dataframe(ofx_resources_path)
+    print(f"Starting OFX processing and categorization from base path: {BASE_OFX_FILES_PATH}")
+    # Pass the new base path to the updated parsing function
+    raw_transactions_df = parse_ofx_files_to_dataframe(BASE_OFX_FILES_PATH)
 
     if raw_transactions_df.empty:
         print("No transactions parsed from OFX files. Returning empty DataFrame.")
-        # Ensure an empty DataFrame with expected categorization columns is returned
         empty_df_cols = [COLUMN_ID, COLUMN_DATE, COLUMN_TYPE, COLUMN_AMOUNT, COLUMN_MEMO,
-                         COLUMN_MAIN_CATEGORY, COLUMN_SUB_CATEGORY]
-        if COLUMN_ACCOUNT_TYPE in raw_transactions_df.columns:  # if parse_ofx_files_to_dataframe adds it
-            empty_df_cols.insert(5, COLUMN_ACCOUNT_TYPE)
+                         COLUMN_ACCOUNT_TYPE, COLUMN_MAIN_CATEGORY, COLUMN_SUB_CATEGORY]
         return pd.DataFrame(columns=empty_df_cols)
 
-    print(f"Successfully parsed {len(raw_transactions_df)} raw transactions.")
+    print(f"Successfully parsed {len(raw_transactions_df)} raw transactions including account types.")
     print("Categorizing transactions...")
-
-    # The COLUMN_ACCOUNT_TYPE is not added by parse_ofx_files_to_dataframe by default.
-    # If it were, categorize_transactions would use it. For now, it will run without it.
-    # If account_type needs to be added based on subfolders or filenames, that logic
-    # would need to be incorporated into parse_ofx_files_to_dataframe or here.
-
-    categorized_df = _categorize_transactions_internal(raw_transactions_df.copy(), user_categories_csv_path)
+    categorized_df = _categorize_transactions_internal(raw_transactions_df.copy(), USER_CATEGORIES_CSV_PATH)
 
     if categorized_df.empty:
         print("DataFrame is empty after categorization attempt.")
     else:
         print(f"Successfully categorized transactions. Final DataFrame shape: {categorized_df.shape}")
-
     return categorized_df
 
 
-# Path definitions - consider making these configurable or passed as arguments
-OFX_RESOURCES_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "resources", "ofx") # Adjust if your resources folder is elsewhere
-USER_CATEGORIES_CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "resources", "user_defined_categories.csv") # Optional
-
+# Path definitions
+# Corrected: three levels up to project root, then to /resources/files/
+BASE_OFX_FILES_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "resources", "files") 
+USER_CATEGORIES_CSV_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "resources", "user_defined_categories.csv")
 
 def parse_ofx_files_and_write_to_db(target_db: str = "local", if_exists_strategy: str = "replace"):
     """
@@ -276,20 +290,8 @@ def parse_ofx_files_and_write_to_db(target_db: str = "local", if_exists_strategy
     the 'ofx_transactions' table in the specified database.
     """
     print(f"Starting OFX processing for database target: {target_db}")
-    
-    # Ensure paths are resolved correctly if they are relative to this script's location
-    # If OFX_RESOURCES_PATH or USER_CATEGORIES_CSV_PATH are intended to be fixed relative
-    # to the project root, they might need adjustment or to be passed in.
-    # For now, using the paths as defined above.
-    
-    # Log the paths being used
-    print(f"Using OFX resources path: {OFX_RESOURCES_PATH}")
-    print(f"Using user categories CSV (if it exists): {USER_CATEGORIES_CSV_PATH}")
-
-    transactions_df = get_categorized_transactions(
-        ofx_resources_path=OFX_RESOURCES_PATH,
-        user_categories_csv_path=USER_CATEGORIES_CSV_PATH
-    )
+    # get_categorized_transactions now uses module-level constants for paths
+    transactions_df = get_categorized_transactions()
 
     if transactions_df.empty:
         print("No transactions to process or write to the database.")
@@ -381,21 +383,13 @@ def parse_ofx_files_and_write_to_db(target_db: str = "local", if_exists_strategy
             print("Database connection closed.")
 
 # This is the function that spending.py currently calls.
-# We'll keep its signature similar for now but it will call the new DB writing function
-# and won't return a DataFrame.
-def parse_ofx_files(target_db: str = "local"): # Modified to accept target_db
+def parse_ofx_files(target_db: str = "local"): 
     """
     Main function to process OFX files and store them in the database.
-    This function is intended to be called by external modules like spending.py.
     """
     print("parse_ofx_files called, initiating data processing and DB write...")
     parse_ofx_files_and_write_to_db(target_db=target_db, if_exists_strategy="replace")
     print("parse_ofx_files: OFX data processing and database write attempt completed.")
-    # No longer returns a DataFrame
-    # For demonstration of what used to be returned, if needed for other parts:
-    # df = get_categorized_transactions(OFX_RESOURCES_PATH, USER_CATEGORIES_CSV_PATH)
-    # print("Data that would have been returned by the old parse_ofx_files:")
-    # print(df.head() if not df.empty else "No data.")
 
 # Example of how this module could be run directly (for testing)
 if __name__ == '__main__':

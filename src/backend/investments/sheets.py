@@ -4,8 +4,9 @@ import gspread
 from cachetools import TTLCache
 from cachetools import cached
 from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2 import service_account
 
-from backend.investments.contants import *
+from backend.investments.constants import *
 
 cache = TTLCache(maxsize=1, ttl=3600)  # Cache can hold 1 item, expires after 1 hour
 
