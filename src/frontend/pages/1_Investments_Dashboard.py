@@ -265,11 +265,30 @@ def format_currency(amount, currency_symbol) -> str:
 def plot_forecast(current_balance):
     st.header("📮 Projeção de Investimentos")
     
+    # Get 6-month average deposit for default value (same query as in plot_summary)
+    six_months_query = ("""
+        SELECT 
+            AVG(total_deposit) as avg_deposit_6m,
+            AVG(total_profit) as avg_profit_6m
+        FROM (
+            SELECT total_deposit, total_profit
+            FROM summary_returns 
+            ORDER BY year DESC, month DESC
+            LIMIT 6
+        ) AS last_six_months
+    """)
+    
+    six_months_data = run_query(six_months_query, target_db="local")
+    default_deposit = 1000.0  # Fallback default
+    
+    if not six_months_data.empty and not pd.isna(six_months_data['avg_deposit_6m'].iloc[0]):
+        default_deposit = float(six_months_data['avg_deposit_6m'].iloc[0])
+    
     col1, col2 = st.columns(2)
     with col1:
-        deposit = st.number_input("Depósito Mensal (R$):", value=1000.0, min_value=0.0, step=100.0, format="%.2f")
+        deposit = st.number_input("Depósito Mensal (R$):", value=default_deposit, min_value=0.0, step=100.0, format="%.2f")
     with col2:
-        monthly_return_rate = st.number_input("Retorno Mensal Esperado (%):", value=0.75, min_value=0.0, max_value=5.0, step=0.01, format="%.2f") / 100
+        monthly_return_rate = st.number_input("Retorno Mensal Esperado (%):", value=0.6, min_value=0.0, max_value=5.0, step=0.01, format="%.2f") / 100
 
     # Create date range for the next N years
     forecast_years = st.slider("Horizonte de Projeção (Anos):", min_value=1, max_value=40, value=20)
@@ -294,14 +313,29 @@ def plot_forecast(current_balance):
     # Create DataFrame
     df_forecast = pd.DataFrame(data={'Date': date_list, 'Balance': balance_list, 'Age': age_list})
 
-    # Create forecast chart
-    fig_forecast = px.area(df_forecast, x='Date', y='Balance', title='Projeção de Crescimento da Carteira', hover_data=['Age'])
-    fig_forecast.update_xaxes(title_text='Data')
-    fig_forecast.update_yaxes(title_text='Saldo Projetado (R$)')
-    st.plotly_chart(fig_forecast, use_container_width=True)
+    # Calculate required portfolio for financial independence
+    # Get current monthly expenses to calculate the required portfolio
+    try:
+        # Get latest monthly expenses from financial independence data
+        fi_data = get_financial_independence_data()
+        if not fi_data.empty:
+            latest_expenses = fi_data.iloc[-1]['monthly_expenses']
+            required_portfolio_fi = (latest_expenses * 12) / 0.04
+        else:
+            required_portfolio_fi = None
+    except:
+        required_portfolio_fi = None
 
     # Investment milestones
-    targets = [100000, 500000, 1000000, 5000000, 10000000]
+    targets = [100000, 500000, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000, 10000000,
+               11000000, 12000000, 13000000, 14000000, 15000000]
+    
+    # Add required portfolio for financial independence to targets if calculated
+    if required_portfolio_fi and required_portfolio_fi > 0:
+        targets.append(int(required_portfolio_fi))
+        # Sort targets to maintain order
+        targets = sorted(set(targets))
+    
     milestones_data = []
 
     for target in targets:
@@ -321,17 +355,38 @@ def plot_forecast(current_balance):
                 else:
                     time_to_reach = f"{months_to_reach} meses"
 
+                # Calculate passive income for this target
+                passive_income_target = (target * 0.04) / 12
+                
+                # Check if this is the financial independence target
+                target_label = format_currency(target, 'R$')
+                if required_portfolio_fi and abs(target - required_portfolio_fi) < 1000:
+                    target_label += " 🎯"  # Add target emoji for FI milestone
+
                 milestones_data.append({
-                    'Meta': format_currency(target, 'R$'),
+                    'Meta': target_label,
                     'Tempo para Alcançar': time_to_reach,
                     'Data da Meta': target_month_str,
                     'Idade na Meta': f"{age_years} anos",
+                    'Renda Passiva': format_currency(passive_income_target, 'R$'),
                     'Retorno Mensal na Meta': format_currency(projected_return, 'R$')
                 })
 
-    if milestones_data:
-        st.subheader("🎯 Marcos dos Investimentos")
-        st.dataframe(pd.DataFrame(milestones_data), hide_index=True)
+    # Create two columns: left for milestones table, right for forecast chart
+    col_left, col_right = st.columns([1, 1])
+    
+    with col_left:
+        if milestones_data:
+            st.subheader("🎯 Marcos dos Investimentos")
+            st.dataframe(pd.DataFrame(milestones_data), hide_index=True, use_container_width=True)
+    
+    with col_right:
+        st.subheader("📈 Crescimento da Carteira")
+        # Create forecast chart
+        fig_forecast = px.area(df_forecast, x='Date', y='Balance', title='Projeção de Crescimento da Carteira', hover_data=['Age'])
+        fig_forecast.update_xaxes(title_text='Data')
+        fig_forecast.update_yaxes(title_text='Saldo Projetado (R$)')
+        st.plotly_chart(fig_forecast, use_container_width=True)
 
 def plot_summary():
     st.header("💰 Resumo da Carteira")
@@ -610,6 +665,9 @@ def plot_financial_independence(start_date, end_date):
     with col2:
         st.subheader("📈 Status da Independência")
         
+        # Calculate required portfolio for independence
+        required_portfolio = (current_expenses * 12) / 0.04
+        
         # Current independence percentage
         if current_independence >= 100:
             independence_color = "🟢"
@@ -628,6 +686,12 @@ def plot_financial_independence(start_date, end_date):
             label=f"{independence_color} Independência Financeira",
             value=f"{current_independence:.1f}%",
             help=independence_status
+        )
+        
+        st.metric(
+            label="🎯 Patrimônio Necessário",
+            value=format_currency(required_portfolio, 'R$'),
+            help="Valor necessário para cobrir os gastos atuais (regra dos 4%)"
         )
         
         st.metric(

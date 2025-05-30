@@ -6,6 +6,7 @@ import altair as alt
 import numpy as np
 from datetime import date
 from dateutil.relativedelta import relativedelta
+import plotly.express as px
 
 # Add the src directory to the path to import from backend modules
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -757,21 +758,77 @@ if not raw_transactions_df.empty:
     if not current_budget_df_for_editor.empty:
         st.markdown("### Planejamento de Orçamento")
         
-        budget_editor_key = "budget_data_editor_db"
-        budget_column_config = {
-            "Categoria Principal": st.column_config.TextColumn("Categoria Principal", disabled=True),
-            "Subcategoria": st.column_config.TextColumn("Subcategoria", disabled=True),
-            "Média Gasto (3M)": st.column_config.NumberColumn("Média Gasto 3 Meses", format="%.2f", disabled=True),
-            "Orçamento (R$)": st.column_config.NumberColumn("Orçamento (R$)", format="%.2f", min_value=0.0)
-        }
+        # Create two columns: left for budget table, right for donut chart
+        col_budget_left, col_budget_right = st.columns([2, 1])
         
-        edited_budget_df = st.data_editor(
-            current_budget_df_for_editor,
-            column_config=budget_column_config,
-            key=budget_editor_key,
-            hide_index=True,
-            num_rows="fixed"
-        )
+        with col_budget_left:
+            budget_editor_key = "budget_data_editor_db"
+            budget_column_config = {
+                "Categoria Principal": st.column_config.TextColumn("Categoria Principal", disabled=True),
+                "Subcategoria": st.column_config.TextColumn("Subcategoria", disabled=True),
+                "Média Gasto (3M)": st.column_config.NumberColumn("Média Gasto 3 Meses", format="%.2f", disabled=True),
+                "Orçamento (R$)": st.column_config.NumberColumn("Orçamento (R$)", format="%.2f", min_value=0.0)
+            }
+            
+            edited_budget_df = st.data_editor(
+                current_budget_df_for_editor,
+                column_config=budget_column_config,
+                key=budget_editor_key,
+                hide_index=True,
+                num_rows="fixed",
+                use_container_width=True
+            )
+        
+        with col_budget_right:
+            st.markdown("#### 📊 Distribuição por Categoria")
+            
+            # Prepare data for donut chart - group by main category
+            main_category_budget = {}
+            for (main_cat, _), budget_val in st.session_state.budget_values_dict.items():
+                budget_val = float(budget_val)
+                if budget_val > 0:  # Only include categories with budget > 0
+                    if main_cat in main_category_budget:
+                        main_category_budget[main_cat] += budget_val
+                    else:
+                        main_category_budget[main_cat] = budget_val
+            
+            # Create donut chart if there's budget data
+            if main_category_budget:
+                # Prepare data for plotly
+                categories = list(main_category_budget.keys())
+                values = list(main_category_budget.values())
+                
+                # Create donut chart
+                fig_donut = px.pie(
+                    values=values,
+                    names=categories,
+                    title="Orçamento por Categoria Principal",
+                    hole=0.4  # This makes it a donut chart
+                )
+                
+                # Update layout for better display
+                fig_donut.update_traces(
+                    textposition='inside', 
+                    textinfo='percent+label',
+                    textfont_size=10
+                )
+                
+                fig_donut.update_layout(
+                    showlegend=True,
+                    legend=dict(
+                        orientation="v",
+                        yanchor="middle",
+                        y=0.5,
+                        xanchor="left",
+                        x=1.01
+                    ),
+                    margin=dict(l=0, r=0, t=30, b=0),
+                    height=400
+                )
+                
+                st.plotly_chart(fig_donut, use_container_width=True)
+            else:
+                st.info("📊 Defina valores de orçamento para visualizar a distribuição")
 
         # Process changes from the data editor automatically
         if budget_editor_key in st.session_state and "edited_rows" in st.session_state[budget_editor_key]:
