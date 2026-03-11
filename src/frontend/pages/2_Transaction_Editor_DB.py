@@ -59,7 +59,11 @@ def load_user_budget():
             budget_df = pd.read_csv(USER_BUDGET_FILE)
             if not budget_df.empty:
                 for _, row in budget_df.iterrows():
-                    budget_dict[(row['MainCategory'], row['SubCategory'])] = float(row['BudgetAmount'])
+                    budget_dict[(row['MainCategory'], row['SubCategory'])] = {
+                        'amount': float(row['BudgetAmount']),
+                        'fixa': bool(row['Fixa']) if 'Fixa' in row and pd.notna(row['Fixa']) else False,
+                        'obrigatorio': bool(row['Obrigatorio']) if 'Obrigatorio' in row and pd.notna(row['Obrigatorio']) else False,
+                    }
         except pd.errors.EmptyDataError:
             st.info("Arquivo de orçamento encontrado, mas está vazio.")
         except Exception as e:
@@ -68,17 +72,19 @@ def load_user_budget():
 
 def save_user_budget(budget_dict):
     if not budget_dict:
-        df_to_save = pd.DataFrame(columns=['MainCategory', 'SubCategory', 'BudgetAmount'])
+        df_to_save = pd.DataFrame(columns=['MainCategory', 'SubCategory', 'BudgetAmount', 'Fixa', 'Obrigatorio'])
     else:
         records = []
-        for (main_cat, sub_cat), budget_amount in budget_dict.items():
+        for (main_cat, sub_cat), vals in budget_dict.items():
             records.append({
                 'MainCategory': main_cat,
                 'SubCategory': sub_cat,
-                'BudgetAmount': budget_amount
+                'BudgetAmount': vals['amount'],
+                'Fixa': vals['fixa'],
+                'Obrigatorio': vals['obrigatorio'],
             })
         df_to_save = pd.DataFrame(records)
-    
+
     try:
         df_to_save.to_csv(USER_BUDGET_FILE, index=False)
         st.toast("Orçamento salvo com sucesso!", icon="✅")
@@ -740,13 +746,15 @@ if not raw_transactions_df.empty:
                 mc = row[COLUMN_MAIN_CATEGORY]
                 sc = row[COLUMN_SUB_CATEGORY]
                 avg_spent = calculate_average_spent(budgetable_df, mc, sc, latest_date_in_view)
-                current_budget = st.session_state.budget_values_dict.get((mc, sc), 0.0)
-                
+                current_vals = st.session_state.budget_values_dict.get((mc, sc), {'amount': 0.0, 'fixa': False, 'obrigatorio': False})
+
                 budget_table_data_list.append({
                     "Categoria Principal": mc,
                     "Subcategoria": sc,
                     "Média Gasto (3M)": avg_spent,
-                    "Orçamento (R$)": current_budget
+                    "Orçamento (R$)": current_vals['amount'],
+                    "Fixa": current_vals['fixa'],
+                    "Obrigatória": current_vals['obrigatorio'],
                 })
 
     current_budget_df_for_editor = pd.DataFrame(budget_table_data_list)
@@ -760,7 +768,9 @@ if not raw_transactions_df.empty:
             "Categoria Principal": st.column_config.TextColumn("Categoria Principal", disabled=True),
             "Subcategoria": st.column_config.TextColumn("Subcategoria", disabled=True),
             "Média Gasto (3M)": st.column_config.NumberColumn("Média Gasto 3 Meses", format="%.2f", disabled=True),
-            "Orçamento (R$)": st.column_config.NumberColumn("Orçamento (R$)", format="%.2f", min_value=0.0)
+            "Orçamento (R$)": st.column_config.NumberColumn("Orçamento (R$)", format="%.2f", min_value=0.0),
+            "Fixa": st.column_config.CheckboxColumn("Fixa"),
+            "Obrigatória": st.column_config.CheckboxColumn("Obrigatória"),
         }
         
         edited_budget_df = st.data_editor(
@@ -779,14 +789,20 @@ if not raw_transactions_df.empty:
                 for row_idx_str, changed_cols_dict in edited_budget_rows.items():
                     row_idx = int(row_idx_str)
                     
-                    if "Orçamento (R$)" in changed_cols_dict:
-                        new_budget_value = changed_cols_dict["Orçamento (R$)"]
-                        
+                    if any(k in changed_cols_dict for k in ("Orçamento (R$)", "Fixa", "Obrigatória")):
                         if hasattr(st.session_state, 'last_budget_df_for_editor') and row_idx < len(st.session_state.last_budget_df_for_editor):
                             main_cat = st.session_state.last_budget_df_for_editor.iloc[row_idx]["Categoria Principal"]
                             sub_cat = st.session_state.last_budget_df_for_editor.iloc[row_idx]["Subcategoria"]
-                            
-                            st.session_state.budget_values_dict[(main_cat, sub_cat)] = float(new_budget_value)
+                            current = st.session_state.budget_values_dict.get((main_cat, sub_cat), {'amount': 0.0, 'fixa': False, 'obrigatorio': False})
+
+                            if "Orçamento (R$)" in changed_cols_dict:
+                                current['amount'] = float(changed_cols_dict["Orçamento (R$)"])
+                            if "Fixa" in changed_cols_dict:
+                                current['fixa'] = bool(changed_cols_dict["Fixa"])
+                            if "Obrigatória" in changed_cols_dict:
+                                current['obrigatorio'] = bool(changed_cols_dict["Obrigatória"])
+
+                            st.session_state.budget_values_dict[(main_cat, sub_cat)] = current
                 
                 # Clear the edited rows after processing
                 st.session_state[budget_editor_key]["edited_rows"] = {}
@@ -809,7 +825,7 @@ if not raw_transactions_df.empty:
     INVESTMENT_CATEGORIES = ["Investimentos"]
 
     for (main_cat, _), budget_val in st.session_state.budget_values_dict.items():
-        budget_val = float(budget_val)  # Ensure it's a float
+        budget_val = float(budget_val['amount'])
         if main_cat in INCOME_CATEGORIES:
             total_budgeted_income += budget_val
         elif main_cat in INVESTMENT_CATEGORIES:

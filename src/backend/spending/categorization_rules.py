@@ -22,6 +22,9 @@ CATEGORIZATION_RULES = [
     (['iti *kaiubi ferrei'], ('Transferência entre Contas', 'Geral')),
     (['maria josé'], ('Moradia', 'Diarista')),
     (['maria jose'], ('Moradia', 'Diarista')),
+    (['aline maria souza'], ('Moradia', 'Diarista')),
+    (['julio vieira paravela'], ('Educação', 'Cursos')),
+    (['melhorqgente'], ('Animais de Estimação', 'Geral')),
 
     # Other specific Investment institutions / transactions (New and Existing)
     (['banco topazio'], ('Investimentos', 'Geral')),
