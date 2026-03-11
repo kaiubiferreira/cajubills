@@ -186,11 +186,8 @@ if not raw_transactions_df.empty:
                                    .agg(Amount=(COLUMN_AMOUNT, 'sum'))
         
         # Ensure complete month index for net flow and its MA
-        if not df_chart.empty:
-            all_months_idx_net = pd.date_range(start=df_chart[COLUMN_DATE].min(), end=df_chart[COLUMN_DATE].max(), freq='MS').strftime('%Y-%m')
-            base_month_df_net = pd.DataFrame(index=all_months_idx_net)
-        else:
-            base_month_df_net = pd.DataFrame()
+        all_months_idx_net = sorted(df_chart['YearMonth'].unique())
+        base_month_df_net = pd.DataFrame(index=all_months_idx_net)
 
         monthly_net_data = base_month_df_net.join(monthly_net_data_raw, how='left').fillna(0).reset_index().rename(columns={'index': 'YearMonth'})
         monthly_net_data = monthly_net_data.sort_values(by='YearMonth')
@@ -198,11 +195,10 @@ if not raw_transactions_df.empty:
         # Convert YearMonth string to datetime for proper chart rendering
         monthly_net_data['YearMonthDate'] = pd.to_datetime(monthly_net_data['YearMonth'] + '-01')
         
+        net_flow_ma_df = pd.DataFrame()
         if not monthly_net_data.empty:
             monthly_net_data['Net_MA'] = monthly_net_data['Amount'].rolling(window=3, min_periods=1).mean()
-        
-        net_flow_ma_df = monthly_net_data[['YearMonthDate', 'Net_MA']].copy().rename(columns={'Net_MA':'MovingAverage'})
-        if not net_flow_ma_df.empty: 
+            net_flow_ma_df = monthly_net_data[['YearMonthDate', 'Net_MA']].copy().rename(columns={'Net_MA':'MovingAverage'})
             net_flow_ma_df['MAType'] = 'Net Flow MA'
 
         # Data for Income/Expense Summary & Moving Averages
@@ -228,12 +224,14 @@ if not raw_transactions_df.empty:
         monthly_income_expense_summary = pd.concat([income_monthly, expenses_monthly[expenses_monthly['Type'] == 'Expenses'] ], ignore_index=True)\
             .sort_values(by=['YearMonth', 'Type'])
 
-        income_ma_df = income_monthly[['YearMonthDate', 'Income_MA']].copy().rename(columns={'Income_MA':'MovingAverage'})
-        if not income_ma_df.empty: 
+        income_ma_df = pd.DataFrame()
+        if not income_monthly.empty and 'Income_MA' in income_monthly.columns:
+            income_ma_df = income_monthly[['YearMonthDate', 'Income_MA']].copy().rename(columns={'Income_MA':'MovingAverage'})
             income_ma_df['MAType'] = 'Income MA'
 
-        expenses_ma_df = expenses_monthly[['YearMonthDate', 'Expenses_MA']].copy().rename(columns={'Expenses_MA':'MovingAverage'})
-        if not expenses_ma_df.empty: 
+        expenses_ma_df = pd.DataFrame()
+        if not expenses_monthly.empty and 'Expenses_MA' in expenses_monthly.columns:
+            expenses_ma_df = expenses_monthly[['YearMonthDate', 'Expenses_MA']].copy().rename(columns={'Expenses_MA':'MovingAverage'})
             expenses_ma_df['MAType'] = 'Expenses MA'
 
         # Expense/Income Ratio calculation

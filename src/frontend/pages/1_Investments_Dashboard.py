@@ -821,7 +821,7 @@ st.title("Painel de Investimentos")
 
 # Check if we have data
 dates_check = get_dates()
-if dates_check.empty:
+if dates_check.empty or pd.isna(dates_check['end_date'].iloc[0]) or pd.isna(dates_check['start_date'].iloc[0]):
     st.error("❌ Nenhum dado de investimento encontrado no banco de dados.")
     st.info("Certifique-se de que os dados de investimentos foram carregados no banco de dados local.")
     st.stop()
