@@ -41,4 +41,7 @@ Occasional: update year-specific constants (e.g. `NU_PRICES`, target allocations
 - `run.py` has the DB reset commented out; it only runs `create_tables_from_ddl()` then reloads. Raw operation tables are fully replaced from the sheet each run, so the sheet is the source of truth for investments.
 - `preprocessing.py` uses SQLite-only syntax (`INSERT OR IGNORE`, `?` placeholders); `raw_data.py` also supports MySQL.
 - `src/sql/connection.py` has the remote RDS host and **password hardcoded in plain text** and committed — should be moved to env vars / rotated.
+- Fixed income (non-Tesouro Selic): each `buy` is a lot accruing independently. A `sell` is treated as a **full liquidation** of that asset on the sell date (partial sells are not supported). Tesouro Selic is handled separately and does support quotas/partial sells. To move a position between products (e.g. XP → Empiricus PGBL), enter a `sell` on the old asset and a `buy` on the new one on the same date.
+- `financial_returns`/`summary_returns` are monthly. An asset fully sold (sell within a week after its last balance row) gets zero-value rows so the liquidation month has an end value of 0 and its negative deposit counts. Assets that just stop (e.g. matured without a `sell` entry) are not handled this way.
+- Yahoo symbols that differ from the sheet ticker (e.g. London ETFs) go in `YF_SYMBOL_MAP` in `asset_pricing.py`.
 - No tests in the repo.

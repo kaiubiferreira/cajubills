@@ -162,33 +162,46 @@ def _populate_fixed_income_non_tesouro_selic(cursor):
                 op.due_date,
                 op.tax_rate,
                 op.is_pgbl,
+                op.sell_date,
                 pow((1.0 + pre_rate),(1.0/252)) -1 as daily_pre_rate,
                 (op.post_rate * (i.factor - 1) + 1) as daily_post_rate,
                 pow((1.0 + pre_rate),(1.0/252)) -1 + (op.post_rate * (i.factor - 1) + 1) as total_daily_rate,
                 EXP(SUM(LN(pow((1.0 + pre_rate),(1.0/252)) -1  + (op.post_rate * (i.factor - 1) + 1))) OVER (PARTITION BY op.asset, op.purchase_date ORDER BY i.date)) AS cumulative_daily_rate
-            FROM fixed_income_operations op
+            FROM (
+                -- Only buys create lots. A later 'sell' of the same asset is treated as a full
+                -- liquidation: it stops the accrual of every earlier lot on the sell date.
+                SELECT b.*,
+                    (SELECT MIN(s.purchase_date) FROM fixed_income_operations s
+                     WHERE s.asset = b.asset AND s.operation_type = 'sell'
+                       AND s.purchase_date >= b.purchase_date) AS sell_date
+                FROM fixed_income_operations b
+                WHERE b.operation_type = 'buy'
+            ) op
             INNER JOIN daily_indexes i
             ON op.financial_index = i.financial_index
             AND i.date BETWEEN op.purchase_date AND op.due_date
+            AND (op.sell_date IS NULL OR i.date < op.sell_date)
             WHERE op.asset NOT LIKE "%Tesouro Selic%"
         ), grouped AS (
             SELECT 
                 asset,
-                due_date,
+                MAX(due_date) AS due_date,
                 date,
-                tax_rate,
+                MAX(tax_rate) AS tax_rate,
+                MAX(sell_date) AS sell_date,
                 SUM(value) as deposit_value,
                 SUM(cumulative_daily_rate * value) AS gross_value,
                 SUM(CASE WHEN is_pgbl THEN cumulative_daily_rate * value * tax_rate ELSE (cumulative_daily_rate * value - value) * tax_rate END) AS tax_value,
                 SUM(cumulative_daily_rate * value - CASE WHEN is_pgbl THEN cumulative_daily_rate * value * tax_rate ELSE (cumulative_daily_rate * value - value) * tax_rate END) AS net_value
             FROM daily_rates
-            GROUP BY asset, date, due_date, tax_rate
+            GROUP BY asset, date
         ), values_range AS(
              SELECT 
                 asset,
                 due_date,
                 date,
-                COALESCE (lead(date) OVER (PARTITION BY asset ORDER BY date), due_date) next_date,
+                COALESCE (lead(date) OVER (PARTITION BY asset ORDER BY date), sell_date, due_date) next_date,
+                sell_date,
                 tax_rate,
                 deposit_value,
                 gross_value,
@@ -380,10 +393,29 @@ def _populate_financial_returns(cursor):
         FROM operations
         GROUP BY asset, strftime('%Y', operation_date), strftime('%m', operation_date)
     ),
-    balance_by_asset AS (
+    balance_raw AS (
         SELECT asset, date, SUM(value) as value
         FROM daily_balance
         GROUP BY asset, date
+    ),
+    -- Assets fully liquidated by a 'sell' right after their last balance (within a week, e.g. over a weekend). Their balance rows simply
+    -- stop, so the liquidation month would have no end value (and its negative deposit would be lost
+    -- from the totals). Add zero-value rows on the sell date and on the first day of the following
+    -- month so the closing month gets a proper end value of 0.
+    closed AS (
+        SELECT l.asset,
+            (SELECT MIN(o.operation_date) FROM operations o
+             WHERE o.asset = l.asset AND o.operation_type = 'sell'
+               AND o.operation_date > l.last_date AND o.operation_date <= date(l.last_date, '+7 day')) AS close_date
+        FROM (SELECT asset, MAX(date) AS last_date FROM balance_raw GROUP BY asset) l
+        WHERE close_date IS NOT NULL
+    ),
+    balance_by_asset AS (
+        SELECT asset, date, value FROM balance_raw
+        UNION ALL
+        SELECT asset, close_date, 0 FROM closed
+        UNION ALL
+        SELECT asset, date(close_date, 'start of month', '+1 month'), 0 FROM closed
     ),
     balance AS (
         SELECT asset, date, value, lag(value) OVER (PARTITION BY asset ORDER by date) as lag_value, lag(date) OVER (PARTITION BY asset ORDER by date) AS lag_date,

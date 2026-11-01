@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from ofxparse import OfxParser
 
-from .categorization_rules import CATEGORIZATION_RULES  # Import the rules
+from .categorization_rules import CATEGORIZATION_RULES, DATED_RULES  # Import the rules
 from sql.connection import db_connect # Corrected import: removed 'src.'
 
 # Define column names for consistency (can be shared or defined where needed)
@@ -236,6 +236,17 @@ def _categorize_transactions_internal(df: pd.DataFrame, user_categories_file: st
         if COLUMN_MEMO in row:
             memo = str(row[COLUMN_MEMO]).lower()
             if not memo or pd.isna(row[COLUMN_MEMO]):
+                continue
+
+            tx_date = pd.Timestamp(row[COLUMN_DATE]) if COLUMN_DATE in row and pd.notna(row[COLUMN_DATE]) else None
+            dated_match = None
+            if tx_date is not None:
+                for keywords, start_date, category_name in DATED_RULES:
+                    if tx_date >= pd.Timestamp(start_date) and all(k.lower() in memo for k in keywords):
+                        dated_match = category_name
+                        break
+            if dated_match:
+                df.loc[index, COLUMN_MAIN_CATEGORY], df.loc[index, COLUMN_SUB_CATEGORY] = dated_match
                 continue
 
             for keywords, category_name in CATEGORIZATION_RULES:
