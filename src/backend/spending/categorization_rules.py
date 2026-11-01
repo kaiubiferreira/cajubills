@@ -2,6 +2,13 @@
 # Rules are processed in order. The first match wins.
 # Each rule is a tuple: (list_of_keywords, category_name)
 # All keywords in the list must be present in the memo (case-insensitive AND condition).
+# Rules that only apply from a given date onwards: (list_of_keywords, start_date 'YYYY-MM-DD', category).
+# Evaluated before CATEGORIZATION_RULES (but after user-defined per-transaction categories).
+DATED_RULES = [
+    # Pix sent to Lais from 2026 on is not an expense.
+    (['transferência enviada', 'lais medeiros'], '2026-01-01', ('Ignorar', 'Geral')),
+]
+
 CATEGORIZATION_RULES = [
     # --- Highly Specific Payee/Transfer Rules (Revised for better Investment/Kaiubi logic) ---
     # Kaiubi Transfers SENT to specific Investment Institutions

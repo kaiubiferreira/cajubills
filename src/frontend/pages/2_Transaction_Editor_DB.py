@@ -730,7 +730,7 @@ if not raw_transactions_df.empty:
     
     if not raw_transactions_df.empty:
         budgetable_df = raw_transactions_df[
-            ~raw_transactions_df[COLUMN_MAIN_CATEGORY].isin(['Ignorar', 'Extraordinários'])
+            ~raw_transactions_df[COLUMN_MAIN_CATEGORY].isin(['Ignorar', 'Extraordinários', 'Animais de Estimação'])
         ].copy()
 
         if not budgetable_df.empty:

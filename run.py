@@ -54,8 +54,10 @@ def main():
         # Ensure process_all_investments from src.backend.investments.investment 
         # is adapted to accept a database connection object.
         conn_invest = db_connect(target_db="local") 
-        process_all_investments(conn_invest) 
-        conn_invest.close() 
+        try:
+            process_all_investments(conn_invest)
+        finally:
+            conn_invest.close()
         print("Investments data processing completed.")
     except Exception as e:
         print(f"Error during investments data processing: {e}")

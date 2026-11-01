@@ -2,6 +2,17 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime, date, timedelta
 
+# Sheet ticker -> Yahoo Finance symbol, for tickers that need an exchange suffix.
+# These are UCITS ETFs listed on the London Stock Exchange (USD-quoted lines).
+# Prices are stored under the sheet ticker so downstream joins keep working.
+YF_SYMBOL_MAP = {
+    'AVGS': 'AVGS.L',
+    'EMVL': 'EMVL.L',
+    'FWRA': 'FWRA.L',
+    'IWQU': 'IWQU.L',
+}
+
+
 def get_missing_data_ranges(conn):
     """
     Analyze local database to determine what asset price data is missing.
@@ -101,13 +112,17 @@ def update_asset_price(conn):
 
     for ticker, info in tickers_to_update.items():
         start_date = info['start_date']
+        if isinstance(start_date, str):
+            start_date = datetime.strptime(start_date[:10], '%Y-%m-%d').date()
+        elif isinstance(start_date, datetime):
+            start_date = start_date.date()
         start_date_str = start_date.strftime('%Y-%m-%d')
         
         print(f"\n📈 Processing {ticker} from {start_date_str} ({info['update_reason']})...")
         
         try:
             # Create ticker object and download data
-            ticker_obj = yf.Ticker(ticker)
+            ticker_obj = yf.Ticker(YF_SYMBOL_MAP.get(ticker, ticker))
             df = ticker_obj.history(start=start_date_str, raise_errors=True)
             
             if df.empty:

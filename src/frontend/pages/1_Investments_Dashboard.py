@@ -262,6 +262,23 @@ def format_currency(amount, currency_symbol) -> str:
     formatted_amount = f"{amount:,.2f}"
     return f"{currency_symbol} {formatted_amount}"
 
+def get_average_monthly_expenses(months=12):
+    """Average monthly expenses over the last `months` complete months (same exclusions as the independence section)."""
+    df = run_query(f"""
+        SELECT AVG(monthly_expenses) AS avg_expenses FROM (
+            SELECT strftime('%Y-%m', date) AS year_month, ABS(SUM(amount)) AS monthly_expenses
+            FROM ofx_transactions
+            WHERE amount < 0
+            AND main_category NOT IN ('Ignorar', 'Investimentos', 'Extraordinários')
+            AND strftime('%Y-%m', date) < strftime('%Y-%m', 'now')
+            GROUP BY year_month
+            ORDER BY year_month DESC
+            LIMIT {int(months)}
+        )
+    """, target_db="local")
+    value = df['avg_expenses'].iloc[0] if not df.empty else None
+    return float(value) if value is not None and not pd.isna(value) else 0.0
+
 def plot_forecast(current_balance):
     st.header("📮 Projeção de Investimentos")
     
@@ -300,34 +317,62 @@ def plot_forecast(current_balance):
     fig_forecast.update_yaxes(title_text='Saldo Projetado (R$)')
     st.plotly_chart(fig_forecast, use_container_width=True)
 
-    # Investment milestones
-    targets = [100000, 500000, 1000000, 5000000, 10000000]
+    # Investment milestones: every whole million up to 5M, then 10M. Only targets above the current balance.
+    targets = [(format_currency(m * 1_000_000, 'R$'), m * 1_000_000) for m in [1, 2, 3, 4, 5, 10]
+               if current_balance < m * 1_000_000]
+
+    # Financial independence target: 4% rule (same as the independence section) on the average
+    # monthly expenses of the last 12 complete months.
+    avg_expenses = get_average_monthly_expenses()
+    monthly_expenses = st.number_input(
+        "Gastos Mensais para Independência Financeira (R$):",
+        value=float(round(avg_expenses, 2)), min_value=0.0, step=500.0, format="%.2f",
+        help="Padrão: média dos últimos 12 meses completos (excluindo investimentos e itens ignorados).")
+    fi_target = monthly_expenses * 12 / 0.04
+    if monthly_expenses > 0:
+        targets.append((f"🏖️ Independência Financeira ({format_currency(fi_target, 'R$')})", fi_target))
+    targets.sort(key=lambda t: t[1])
+
     milestones_data = []
+    for label, target in targets:
+        # Simulate month by month (up to 100 years) at the current pace, independent of the chart horizon
+        balance = current_balance
+        months_to_reach = None
+        if balance >= target:
+            months_to_reach = 0
+        else:
+            for m in range(1, 1200 + 1):
+                balance = balance * (1 + monthly_return_rate) + deposit
+                if balance >= target:
+                    months_to_reach = m
+                    break
 
-    for target in targets:
-        if current_balance < target:
-            target_rows = df_forecast[df_forecast['Balance'] >= target]
-            if not target_rows.empty:
-                target_row = target_rows.iloc[0]
-                target_month_str = target_row['Date'].strftime('%B, %Y')
-                months_to_reach = (target_row['Date'] - current_date).days // 30
-                years_to_reach = months_to_reach // 12
-                months_remaining = months_to_reach % 12
-                age_years = target_row['Age']
-                projected_return = target_row['Balance'] * monthly_return_rate
+        if months_to_reach is None:
+            milestones_data.append({
+                'Meta': label,
+                'Tempo para Alcançar': "Não alcançado em 100 anos",
+                'Data da Meta': "-",
+                'Idade na Meta': "-",
+                'Retorno Mensal na Meta': "-"
+            })
+            continue
 
-                if months_to_reach > 12:
-                    time_to_reach = f"{years_to_reach} ano(s) e {months_remaining} mês(es)"
-                else:
-                    time_to_reach = f"{months_to_reach} meses"
+        target_date = current_date + timedelta(days=30 * months_to_reach)
+        age_years = target_date.year - BIRTH_DATE.year - ((target_date.month, target_date.day) < (BIRTH_DATE.month, BIRTH_DATE.day))
+        projected_return = balance * monthly_return_rate
+        years_to_reach, months_remaining = divmod(months_to_reach, 12)
+        if months_to_reach > 12:
+            time_to_reach = f"{years_to_reach} ano(s) e {months_remaining} mês(es)"
+        else:
+            time_to_reach = f"{months_to_reach} meses"
 
-                milestones_data.append({
-                    'Meta': format_currency(target, 'R$'),
-                    'Tempo para Alcançar': time_to_reach,
-                    'Data da Meta': target_month_str,
-                    'Idade na Meta': f"{age_years} anos",
-                    'Retorno Mensal na Meta': format_currency(projected_return, 'R$')
-                })
+        milestones_data.append({
+            'Meta': label,
+            'Tempo para Alcançar': time_to_reach,
+            'Data da Meta': target_date.strftime('%B, %Y'),
+            'Idade na Meta': f"{age_years} anos",
+            'Retorno Mensal na Meta': format_currency(projected_return, 'R$')
+        })
 
     if milestones_data:
         st.subheader("🎯 Marcos dos Investimentos")
