@@ -1,29 +1,32 @@
-MainCategory,SubCategory,BudgetAmount
-Renda,Salário,28300.0
-Renda,Lais,6000.0
-Transporte,Pedágios,50.0
-Educação,Cursos,500.0
-Alimentação,Restaurante/Delivery,2000.0
-Alimentação,Supermercado,2000.0
-Animais de Estimação,Geral,600.0
-Investimentos,Geral,11000.0
-Financeiro,Seguro celular,16.0
-Transporte,Combustível,250.0
-Moradia,Aluguel/Prestação,4780.0
-Moradia,Diarista,2400.0
-Não Categorizado,Não Categorizado,1500.0
-Moradia,Condomínio,1200.0
-Serviços Online,Streaming,200.0
-Serviços Online,Outros,150.0
-Saúde,Academia,1000.0
-Compras (Geral),Ecommerce,1000.0
-Viagem,Passeios/Atividades,1500.0
-Moradia,Reforma/Manutenção,500.0
-Moradia,Telefone/Internet,332.0
-Transporte,Aplicativo,350.0
-Moradia,Eletricidade,580.0
-Pessoais,Beleza,40.0
-Saúde,Farmácia,1500.0
-Pessoais,Roupas,500.0
-Impostos e Taxas,Geral,0.0
-Compras (Geral),Óculos/Ótica,0.0
+MainCategory,SubCategory,BudgetAmount,Fixa,Obrigatorio
+Renda,Salário,37200.0,True,True
+Renda,Lais,0.0,False,False
+Transporte,Pedágios,100.0,False,False
+Educação,Cursos,500.0,True,False
+Alimentação,Restaurante/Delivery,800.0,False,False
+Alimentação,Supermercado,200.0,False,False
+Animais de Estimação,Geral,450.0,True,True
+Investimentos,Geral,0.0,False,False
+Financeiro,Seguro celular,16.0,False,False
+Transporte,Combustível,300.0,False,False
+Moradia,Aluguel/Prestação,4780.0,True,True
+Moradia,Diarista,1700.0,True,False
+Não Categorizado,Não Categorizado,1000.0,False,False
+Moradia,Condomínio,1200.0,True,True
+Serviços Online,Streaming,150.0,False,False
+Serviços Online,Outros,150.0,False,False
+Saúde,Academia,550.0,True,False
+Compras (Geral),Ecommerce,600.0,False,False
+Viagem,Passeios/Atividades,1500.0,False,False
+Moradia,Reforma/Manutenção,400.0,False,False
+Moradia,Telefone/Internet,332.0,True,False
+Transporte,Aplicativo,350.0,False,False
+Moradia,Eletricidade,580.0,True,True
+Pessoais,Beleza,40.0,False,False
+Saúde,Farmácia,500.0,False,False
+Pessoais,Roupas,1000.0,False,False
+Impostos e Taxas,Geral,0.0,False,False
+Compras (Geral),Óculos/Ótica,0.0,False,False
+Transporte,Estacionamento,50.0,False,False
+Financeiro,Seguro Auto,291.0,True,True
+Viagem,Hospedagem,2000.0,False,False
